@@ -1,6 +1,8 @@
 from Buses import *
 from BooleanFieldOps import *
 
+'''All operations used here are boolean operations.'''
+
 class BooleanInputBus(BooleanBus):
 	def __init__(self, board, input_idx):
 		BooleanBus.__init__(self, board, MAJOR_INPUT)
@@ -81,6 +83,7 @@ class BooleanOutputBus(BooleanBus):
 		assert(False)	# that would be weird.
 
 class BooleanAddBus(BooleanBus):
+	'''Addition using boolean operations'''
 	def __init__(self, board, bus_left, bus_right):
 		BooleanBus.__init__(self, board, MAJOR_LOGIC)
 		#print "left: ", bus_left, bus_left.get_trace_type()
@@ -134,7 +137,8 @@ class ConstantBitXorBus(ConstantBitXorBase):
 	def wires_per_xor(self):
 		return 1
 
-	def invert_field_op(self, comment, in_wire, wires):
+	def invert_field_op(self, comment, in_wire, wires): # type: (str, Wire, list[Wire]) -> list[FieldOp]
+		'''inverts all bits'''
 		return [ FieldXor(comment,
 				self.board.one_wire(), in_wire, wires[0]) ]
 
@@ -147,14 +151,15 @@ class AllOnesBus(AllOnesBase):
 
 class BitWiseBus(BinaryBooleanBus):
 	def __init__(self, board, bus_left, bus_right, field_op_class, comment_name):
+		# type: (Board, Bus, Bus, type[FieldAnd] | type[FieldOr] | type[FieldXor], str) -> None
 		BinaryBooleanBus.__init__(self, board, bus_left, bus_right)
-		self.field_op_class = field_op_class
+		self.field_op_class = field_op_class 
 		self.comment_name = comment_name
 
 	def get_wire_count(self):
 		return self.get_trace_count()
 
-	def get_field_ops(self):
+	def get_field_ops(self): # type: () -> list[FieldOp]
 		cmds = []
 		for out in range(self.get_trace_count()):
 			comment = "%s bit %d" % (self.comment_name, out)

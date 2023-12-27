@@ -6,6 +6,11 @@
 
 import argparse
 import re
+import os
+import sys
+mypath = os.path.dirname(os.path.abspath(__file__))
+sys.path.append("%s/../external-code/dep" % mypath)
+print(sys.path)
 import pydot
 
 class Wire():
@@ -128,6 +133,8 @@ class CircuitParser():
         value = verb[10:]
       const = int(value, 16) * sign
       self.add_gate(ConstMulGate("const-mul", in_a, out_a, const))
+    elif (verb=="zerop"): # fix from https://blog.csdn.net/mutourend/article/details/90788712
+      self.add_gate(Gate("zerop", in_a, out_a))
     else:
       assert(False)
 

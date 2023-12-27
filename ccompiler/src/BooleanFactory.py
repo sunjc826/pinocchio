@@ -19,7 +19,7 @@ class BooleanFactory(ReqFactory):
 	def make_output_bus(self, expr_bus, idx):
 		return BooleanOutputBus(self.get_board(), expr_bus, idx)
 
-	def make_req(self, expr, type):
+	def make_req(self, expr, type): # type: (DFGExpr, TraceType) -> BusReq
 		assert(type==BOOLEAN_TYPE)
 		if (isinstance(expr, Input)):
 			result = BooleanInputReq(self, expr, type)
@@ -43,7 +43,7 @@ class BooleanFactory(ReqFactory):
 			result = ReqFactory.make_req(self, expr, type)
 		return result
 
-	def collapse_req(self, req):
+	def collapse_req(self, req):  # type: (BusReq) -> Bus
 		return req.natural_impl()
 
 	def get_BitAndBus_class(self): return BitAndBus

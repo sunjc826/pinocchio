@@ -8,15 +8,28 @@ from Board import Board
 from Report import Report
 from DFG import *
 from BusReq import *
+from TypeHintHelpers import always_false
+if always_false:
+	import Buses
+	import ArithBuses
+	import BooleanBuses
+	import ArithBusReq
+	import BooleanBusReq
+
+'''
+Transformation sequence:
+C AST -> DFGExpr -> BusReq -> Bus ---(Assign wires to buses)---> FieldOps -> Output file (e.g. .arith file)
+'''
 
 class ReqFactory(Collapser):
 	def __init__(self, output_filename, circuit_inputs, circuit_nizk_inputs, circuit_outputs, bit_width):
+		# type: (str, list[Input], list[NIZKInput], list[tuple[Key, DFGExpr]], BitWidth) -> None
 		Collapser.__init__(self)
 
 		# Setup
 		self._board = Board(max_width=252, bit_width=bit_width)
-		self.buses = set()
-		self.truncated_bus_cache = {}
+		self.buses = set() # type: set[Bus]
+		self.truncated_bus_cache = {} # type: dict[DFGExpr, ArithBuses.JoinBus]
 
 		self.add_extra_bus(self.get_board().get_one_bus())
 		zero_bus = self.make_zero_bus()
@@ -37,11 +50,23 @@ class ReqFactory(Collapser):
 		self.report()
 		self.lint()
 
-	def make_zero_bus(self): raise Exception("abstract")
+	def type(self): # type: () -> TraceType
+		raise Exception("abstract")
 
-	# These requests generate BOOLEAN_TYPE buses, even in an ArithFactory,
-	# so they're common code.
-	def make_req(self, expr, type):
+	def make_zero_bus(self): # type: () -> ArithBuses.ArithZero | BooleanBuses.BooleanZero 
+		raise Exception("abstract")
+
+	def make_output_bus(self, expr_bus, idx): # type: (Bus, int) -> ArithBuses.ArithmeticOutputBus | BooleanBuses.BooleanOutputBus
+		raise Exception("abstract")
+	
+	def make_input_req(self, expr): # type: (DFGExpr) -> ArithBusReq.ArithmeticInputReq | BooleanBusReq.BooleanInputReq
+		raise Exception("abstract")
+
+	def make_req(self, expr, type): # type: (DFGExpr, TraceType) -> BusReq
+		'''
+		These requests generate `BOOLEAN_TYPE` buses, even in an `ArithFactory`,
+		so they're common code.
+		'''
 		if (isinstance(expr, BitAnd)):
 			result = BitAndReq(self, expr, type)
 		elif (isinstance(expr, BitOr)):
@@ -57,41 +82,41 @@ class ReqFactory(Collapser):
 		elif (isinstance(expr, RightShift)):
 			result = RightShiftReq(self, expr, type)
 		else:
-			print expr.__class__
+			print(expr.__class__)
 			assert(False)
 		return result
 
 
 	# Generate all the outputs
-	def process_outputs(self, circuit_outputs):
+	def process_outputs(self, circuit_outputs): # type: (list[tuple[Key, DFGExpr]]) -> None
 		for idx in range(len(circuit_outputs)):
 			(name,expr) = circuit_outputs[idx]
 			expr_bus = self.collapse_tree(
-				self.make_req(expr, self.type()))
+				self.make_req(expr, self.type())) # type: Bus
 			bus = self.make_output_bus(expr_bus, idx)
 			self.add_extra_bus(bus)
 
 	# Ensure all inputs are represented in circuit,
 	# even if they're unused.
-	def process_inputs_core(self, input_list, method):
+	def process_inputs_core(self, input_list, method):  # type: (list[InputBase], Callable[[DFGExpr], BusReq]) -> None
 		for idx in range(len(input_list)):
 			#print "processing %s %d/%d" % (method.__name__, idx, len(input_list))
 			expr = input_list[idx]
 			req = method(expr)
 			try:
-				bus = self.lookup(req)
+				bus = self.lookup(req) # type: ArithBuses.ArithmeticInputBaseBus | BooleanBuses.BooleanInputBus
 				bus.set_used(True)
 			except KeyError:
 				bus = self.collapse_tree(req)
 				bus.set_used(False)
 
-	def process_inputs(self, circuit_inputs, circuit_nizk_inputs):
+	def process_inputs(self, circuit_inputs, circuit_nizk_inputs): # type: (list[InputBase], list[InputBase]) -> None
 		self.process_inputs_core(circuit_inputs, self.make_input_req)
 		self.process_inputs_core(circuit_nizk_inputs, self.make_nizk_input_req)
 		
 	def debug_investigate_buses(self, bus):
-		print "--------------------------------------------------"
-		print "add_extra_bus(%s)" % bus.__class__.__name__
+		print("--------------------------------------------------")
+		print("add_extra_bus(%s)" % bus.__class__.__name__)
 		try:
 			raise Exception()
 		except:
@@ -103,7 +128,7 @@ class ReqFactory(Collapser):
 		self.debug_print_buses()
 		print
 
-	def add_extra_bus(self, bus):
+	def add_extra_bus(self, bus): # type: (Bus) -> None
 		self.buses.add(bus)
 		#self.debug_investigate_buses(bus)
 
@@ -113,22 +138,24 @@ class ReqFactory(Collapser):
 	def collapser(self):
 		return self
 
-	# collapser impl
-	def get_dependencies(self, key):
+	def get_dependencies(self, key): # type: (BusReq) -> list[BusReq]
 		return key.get_dependencies()
 
-	def collapse_impl(self, key):
+	def collapse_impl(self, key): # type: (BusReq) -> Bus
 		bus = key.collapse_impl()
 		self.buses.add(bus)
 		#self.debug_investigate_buses(bus)
 		return bus
+
+	def collapse_req(self, req): # type: (BusReq) -> Bus
+		raise Exception("abstract")
 	
 	def debug_print_buses(self):
 		bus_list = list(self.buses)
 		bus_list.sort()
 		for bus_i in range(len(bus_list)):
-			print "  bus[%d] %s" % (
-				bus_i, bus_list[bus_i].__class__.__name__)
+			print("  bus[%d] %s" % (
+				bus_i, bus_list[bus_i].__class__.__name__))
 
 	# layout phase, after the wiring diagram has been collected.
 	def layout_buses(self):
@@ -150,7 +177,41 @@ class ReqFactory(Collapser):
 		self.bus_list = bus_list
 		self.total_wire_count = next_idx
 
-	def emit(self, output_filename):
+	def emit(self, output_filename): # type: (str) -> None
+		'''
+Example:
+
+total 14
+
+input 0                                  # input
+
+input 1                                  # input
+
+input 2                                  # one-input
+
+const-mul-0 in 1 <2> out 1 <3>           # zero
+
+const-mul-2 in 1 <1> out 1 <4>           # multiply-by-constant 2
+
+const-mul-5 in 1 <2> out 1 <5>           # constant 5
+
+add in 2 <0 5> out 1 <6>                 # ArithBusReq.AddReq(DFG.Input,DFG.Constant)
+
+const-mul-neg-1 in 1 <4> out 1 <7>       # zerop subtract negative
+
+add in 2 <6 7> out 1 <8>                 # zerop diff
+
+zerop in 1 <8> out 2 <10 9>              # zerop <ArithBuses.ArithAddBus instance at 0x7f0f3678b550>
+
+const-mul-neg-1 in 1 <9> out 1 <11>      # zerop inverse
+
+add in 2 <2 11> out 1 <12>               # zerop result
+
+mul in 2 <2 12> out 1 <13>               # output-cast
+
+output 13                                # 
+
+		'''
 		tmp_output_filename = output_filename+".tmp"
 		ofp = open(tmp_output_filename, "w")
 		ofp.write("total %d\n" % self.total_wire_count)
@@ -162,12 +223,13 @@ class ReqFactory(Collapser):
 		os.rename(tmp_output_filename, output_filename)
 
 	def report(self):
+		'''Make a summary of the number of various operations used.'''
 		r = Report()
 		for bus in self.bus_list:
 			field_ops = bus.get_field_ops()
 			for op in field_ops:
 				op.report(r)
-		print r
+		print(r)
 
 	def lint(self):
 		wire_to_field_op = {}	# maps wires to the field_op that output it
@@ -182,8 +244,8 @@ class ReqFactory(Collapser):
 #				print "  %s" % output_wires
 				for output in output_wires:
 					if (output in specified_outputs):
-						print "LINT: bus %s re-specifies wire %s, already set by bus %s" % (
-							bus, output, specified_outputs[output])
+						print("LINT: bus %s re-specifies wire %s, already set by bus %s" % (
+							bus, output, specified_outputs[output]))
 					else:
 						specified_outputs[output] = bus
 					wire_to_field_op[output] = field_op
@@ -192,7 +254,7 @@ class ReqFactory(Collapser):
 		for idx in range(self.total_wire_count):
 			wire = Wire(idx)
 			if (wire not in specified_outputs):
-				print "LINT: no bus specifies output %s" % wire
+				print("LINT: no bus specifies output %s" % wire)
 
 		# check that each field_op computes a value that eventually reaches
 		# an output.
@@ -210,7 +272,7 @@ class ReqFactory(Collapser):
 			#print "Considering %s required_wires" % len(required_wires)
 			useful_field_ops = set()
 			for wire in required_wires:
-                                print wire
+				print(wire)
 				field_op = wire_to_field_op[wire]
 				if (field_op not in done_field_ops):
 					useful_field_ops.add(field_op)
@@ -221,11 +283,11 @@ class ReqFactory(Collapser):
 		for field_op in unused_field_ops:
 			field_op.report(r)
 		if (len(r)>0):
-			print "LINT: %d unused field ops; cost:\n%s" % (len(unused_field_ops), r)
+			print("LINT: %d unused field ops; cost:\n%s" % (len(unused_field_ops), r))
 			# print "LINT: %s" % unused_field_ops
 
-		print "(info) Linted %s field ops from %s buses" % (
-			len(field_ops), len(self.bus_list))
+		print("(info) Linted %s field ops from %s buses" % (
+			len(field_ops), len(self.bus_list)))
 
 	def is_req_factory(self): return True	# just a pseudostatic type assertion
 

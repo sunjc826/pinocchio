@@ -18,7 +18,7 @@ class InputEvaluator(Collapser):
 	def get_dependencies(self, expr):
 		return expr.collapse_dependencies()
 
-	def collapse_impl(self, expr):
+	def collapse_impl(self, expr): # type: (InputBase) -> Any
 		return expr.evaluate(self)
 
 	def get_input(self, sk):

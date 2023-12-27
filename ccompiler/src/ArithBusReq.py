@@ -50,10 +50,10 @@ class MultiplyReq(BinaryOpReq):
 
 	def has_const_opt(self): return True
 
-	def const_impl(self, const_expr, variable_bus):
+	def const_impl(self, const_expr, variable_bus): # type: (DFG.Constant, Bus) -> ConstantMultiplyBus
 		return ConstantMultiplyBus(self.board(), const_expr.value, variable_bus)
 
-	def var_impl(self, *busses):
+	def var_impl(self, *busses): # type: (Bus) -> ArithMultiplyBus
 		return ArithMultiplyBus(self.board(), *busses)
 
 class NegateReq(BusReq):
@@ -79,7 +79,7 @@ class NegateReq(BusReq):
 ##############################################################################
 
 class ConditionalReq(BusReq):
-	def __init__(self, reqfactory, expr, type):
+	def __init__(self, reqfactory, expr, type): # type: (ReqFactory, DFG.Conditional, TraceType) -> None
 		BusReq.__init__(self, reqfactory, expr, type)
 
 	# NB: I used to have clever code here that, given BOOLEAN
@@ -130,90 +130,97 @@ class CmpReq(BinaryOpReq):
 
 	def has_const_opt(self): return False	# doesn't cost muls.
 
-        def var_impl(self, abus, bbus):
-                assert(False)
+	def var_impl(self, abus, bbus): # type: (Bus, Bus) -> Bus
+		assert(False)
 
 class CmpLTReq(CmpReq):
-        def __init__(self, reqfactory, expr, type):
-                CmpReq.__init__(self, reqfactory, expr, type)
+	def __init__(self, reqfactory, expr, type):
+		CmpReq.__init__(self, reqfactory, expr, type)
 
-        def var_impl(self, abus, bbus):
-                minusb_bus = ConstantMultiplyBus(self.board(), self.board().bit_width.get_neg1(), bbus)
-                self.reqfactory.add_extra_bus(minusb_bus)
+	def var_impl(self, abus, bbus): # type: (Bus, Bus) -> Bus
+		minusb_bus = ConstantMultiplyBus(self.board(), self.board().bit_width.get_neg1(), bbus)
+		self.reqfactory.add_extra_bus(minusb_bus)
 
-                comment = "CmpLT %s - %s" % (self.expr.left.__class__, self.expr.right.__class__)
-                aminusb_bus = ArithAddBus(self.board(), comment, abus, minusb_bus)
-                self.reqfactory.add_extra_bus(aminusb_bus)
-                split_bus = SplitBus(self.board(), aminusb_bus)
-                self.reqfactory.add_extra_bus(split_bus)
-                signbit = LeftShiftBus(self.board(), split_bus, -self.board().bit_width.get_sign_bit())
-                self.reqfactory.add_extra_bus(signbit)
-                return JoinBus(self.board(), signbit)
+		comment = "CmpLT %s - %s" % (self.expr.left.__class__, self.expr.right.__class__)
+		aminusb_bus = ArithAddBus(self.board(), comment, abus, minusb_bus)
+		self.reqfactory.add_extra_bus(aminusb_bus)
+
+		# The following steps are doing the following:
+		# suppose a - b has a binary representation of b_{width-1} b_{width-2} ... b1 b0
+		# Split (a - b) into individual bits
+		# Right shift to get 0 0 0 ... 0 b_{width-1}
+		# Join this back into an arithmetic value of b_{width-1} (aka the sign bit)
+		split_bus = SplitBus(self.board(), aminusb_bus)
+		self.reqfactory.add_extra_bus(split_bus)
+		signbit = LeftShiftBus(self.board(), split_bus, -self.board().bit_width.get_sign_bit()) # this step is basically shifting the bits rightwards so that only the sign bit remains
+		self.reqfactory.add_extra_bus(signbit)
+		return JoinBus(self.board(), signbit)
 
 class CmpLEQReq(CmpLTReq):
-        """I made this a subclass of CmpLTReq because the logic is nearly identical."""
-        def __init__(self, reqfactory, expr, type):
-                CmpLTReq.__init__(self, reqfactory, expr, type)
+	"""I made this a subclass of CmpLTReq because the logic is nearly identical."""
+	def __init__(self, reqfactory, expr, type):
+		CmpLTReq.__init__(self, reqfactory, expr, type)
 
-        def var_impl(self, abus, bbus):
-                constant_one = ConstantArithmeticBus(self.board(), 1)
-                self.reqfactory.add_extra_bus(constant_one)
-                comment = "CmpLEQ %s + 1" % (self.expr.right.__class__)
-                bplus1_bus = ArithAddBus(self.board(), comment, bbus, constant_one)
-                self.reqfactory.add_extra_bus(bplus1_bus)
-                return  CmpLTReq.var_impl(self, abus, bplus1_bus)
+	def var_impl(self, abus, bbus): # type: (Bus, Bus) -> Bus
+		# a <= b iff a < b + 1
+		constant_one = ConstantArithmeticBus(self.board(), 1)
+		self.reqfactory.add_extra_bus(constant_one)
+		comment = "CmpLEQ %s + 1" % (self.expr.right.__class__)
+		bplus1_bus = ArithAddBus(self.board(), comment, bbus, constant_one)
+		self.reqfactory.add_extra_bus(bplus1_bus)
+		return  CmpLTReq.var_impl(self, abus, bplus1_bus)
 
 class CmpEQReq(CmpReq):
-        """An == operation.  This will have two possible implementations:  one using boolean operations, one using the compare-with-zero gate."""
-        def __init__(self, reqfactory, expr, type):
-                CmpReq.__init__(self, reqfactory, expr, type)
+	"""An == operation.  This will have two possible implementations:  one using boolean operations, one using the compare-with-zero gate."""
+	def __init__(self, reqfactory, expr, type):
+		CmpReq.__init__(self, reqfactory, expr, type)
 
 class CmpEQReqArith(CmpEQReq):
-        def __init__(self, reqfactory, expr, type):
-                CmpEQReq.__init__(self, reqfactory, expr, type)
+	def __init__(self, reqfactory, expr, type):
+		CmpEQReq.__init__(self, reqfactory, expr, type)
 
-        def var_impl(self, abus, bbus):
-                """Perform equality test by subtracting and use the zerop gate"""
-                # neg_bbus = ConstantMultiplyBus(self.board(), self.board().bit_width.get_neg1(), bbus)
-                # self.reqfactory.add_extra_bus(neg_bbus)
+	def var_impl(self, abus, bbus): # type: (Bus, Bus) -> Bus
+		"""Perform equality test by subtracting and use the zerop gate"""
+		# neg_bbus = ConstantMultiplyBus(self.board(), self.board().bit_width.get_neg1(), bbus)
+		# self.reqfactory.add_extra_bus(neg_bbus)
 
-                # aminusb_bus = ArithAddBus(self.board(), "", abus, neg_bbus)
-                # self.reqfactory.add_extra_bus(aminusb_bus)
+		# aminusb_bus = ArithAddBus(self.board(), "", abus, neg_bbus)
+		# self.reqfactory.add_extra_bus(aminusb_bus)
 
-                # print aminusb_bus
+		# print aminusb_bus
 
-                zerop_bus = ArithmeticZeroPBus(self.board(), abus, bbus)
-                self.reqfactory.add_extra_bus(zerop_bus)
+		zerop_bus = ArithmeticZeroPBus(self.board(), abus, bbus)
+		self.reqfactory.add_extra_bus(zerop_bus)
 
-                assert(zerop_bus.get_trace_count() == 1)
+		assert(zerop_bus.get_trace_count() == 1)
 
-                return zerop_bus
+		return zerop_bus
 
 class CmpEQReqBoolean(CmpEQReq):
-        def __init__(self, reqfactory, expr, type):
-                CmpEQReq.__init__(self, reqfactory, expr, type)
+	def __init__(self, reqfactory, expr, type):
+		CmpEQReq.__init__(self, reqfactory, expr, type)
 
-        def var_impl(self, abus, bbus):
-                """Perform equality test by subtracting, splitting, and checking for each bit being zero using a chain of ANDs"""
-                neg1_bus = ConstantArithmeticBus(self.board(), -1)
-                self.reqfactory.add_extra_bus(neg1_bus)
+	def var_impl(self, abus, bbus): # type: (Bus, Bus) -> Bus
+		"""Perform equality test by subtracting, splitting, and checking for each bit being zero using a chain of ANDs"""
+		neg1_bus = ConstantArithmeticBus(self.board(), -1)
+		self.reqfactory.add_extra_bus(neg1_bus)
 
-                neg_bbus = ArithMultiplyBus(self.board(), neg1, bbus)
-                self.reqfactory.add_extra_bus(neg_bbus)
+		neg_bbus = ArithMultiplyBus(self.board(), neg1, bbus)
+		self.reqfactory.add_extra_bus(neg_bbus)
 
-                aminusb_bus = ArithAddBus(self.board(), "", abus, neg_bbus)
-                self.reqfactory.add_extra_bus(aminusb_bus)
-                split_bus = SplitBus(self.board(), aminusb_bus)
-                self.reqfactory.add_extra_bus(split_bus)
+		aminusb_bus = ArithAddBus(self.board(), "", abus, neg_bbus)
+		self.reqfactory.add_extra_bus(aminusb_bus)
+		split_bus = SplitBus(self.board(), aminusb_bus)
+		self.reqfactory.add_extra_bus(split_bus)
 
-                # This next section is basically a map/fold pattern
-                inv_bus = self.reqfactory.get_ConstantBitXorBus_class()(self.board(),
-                                                                        self.board().bit_width.get_neg1(), split_bus)
-                self.reqfactory.add_extra_bus(inv_bus)
+		# This next section is basically a map/fold pattern
+		inv_bus = self.reqfactory.get_ConstantBitXorBus_class()(self.board(),
+																self.board().bit_width.get_neg1(), split_bus)
+		self.reqfactory.add_extra_bus(inv_bus)
 
-                log_inv_bus = self.reqfactory.get_AllOnesBus_class()(self.board(), inv_bus)
-                self.reqfactory.add_extra_bus(log_inv_bus)
-                return JoinBus(self.board(), log_inv_bus)
+		log_inv_bus = self.reqfactory.get_AllOnesBus_class()(self.board(), inv_bus)
+		self.reqfactory.add_extra_bus(log_inv_bus)
+		return JoinBus(self.board(), log_inv_bus)
 
 	# def var_impl(self, abus, bbus):
 # 		# a <  b :: a+(neg1*b) < 0 :: sign_bit(a+(neg1*b))

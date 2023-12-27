@@ -22,7 +22,7 @@ class ArithFactory(ReqFactory):
 	def make_output_bus(self, expr_bus, idx):
 		return ArithmeticOutputBus(self.get_board(), expr_bus, idx)
 
-	def make_req(self, expr, type):
+	def make_req(self, expr, type): # type: (DFGExpr, TraceType) -> BusReq
 		if (isinstance(expr, Input)):
 			result = ArithmeticInputReq(self, expr, type)
 		elif (isinstance(expr, NIZKInput)):
@@ -33,8 +33,8 @@ class ArithFactory(ReqFactory):
 			result = CmpLTReq(self, expr, type)
 		elif (isinstance(expr, CmpLEQ)):
 			result = CmpLEQReq(self, expr, type)
-                elif (isinstance(expr, CmpEQ)):
-                        result = CmpEQReqArith(self, expr, type)
+		elif (isinstance(expr, CmpEQ)):
+			result = CmpEQReqArith(self, expr, type)
 		elif (isinstance(expr, Constant)):
 			result = ConstantReq(self, expr, type)
 		elif (isinstance(expr, Add)):
@@ -55,7 +55,7 @@ class ArithFactory(ReqFactory):
 			result = ReqFactory.make_req(self, expr, type)
 		return result
 
-	def collapse_req(self, req):
+	def collapse_req(self, req): # type: (BusReq) -> Bus
 #		print "requested %s and %s is naturally %s" % (
 #			req.type, req, req.natural_type())
 		if (req.natural_type() == req.type):
@@ -77,15 +77,15 @@ class ArithFactory(ReqFactory):
 	def get_ConstantArithmeticBus_class(self): return ConstantArithmeticBus
 	def get_ConstantBitXorBus_class(self): return ConstantBitXorBus
 	def get_AllOnesBus_class(self): return AllOnesBus
-        def get_EqlBus_class(self): return EqlBusArith
+	def get_EqlBus_class(self): return EqlBusArith
 
 	# truncation cache
-	def truncate(self, expr, bus):
+	def truncate(self, expr, bus): # type: (DFGExpr, Bus) -> JoinBus
 		if (expr in self.truncated_bus_cache):
 #			print "truncated_bus_cache just recycled a split!"
 			return self.truncated_bus_cache[expr]
 		self.add_extra_bus(bus)
-		truncated_bool_bus = SplitBus(self.get_board(), bus)
+		truncated_bool_bus = SplitBus(self.get_board(), bus) # SplitBus __init__ will do truncation
 		self.add_extra_bus(truncated_bool_bus)
 		truncated_bus = JoinBus(self.get_board(), truncated_bool_bus)
 		self.truncated_bus_cache[expr] = truncated_bus

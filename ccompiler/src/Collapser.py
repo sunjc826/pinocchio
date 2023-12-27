@@ -1,19 +1,42 @@
 import types
 from Timing import Timing
+from TypeHintHelpers import always_false
+if always_false:
+	import typing
+
+from DFG import DFGExpr
+from BusReq import BusReq
+from Buses import Bus
 
 class Collapser:
+	'''
+	Collapser is the superclass for both 
+	`DFGExpr` -> `DFGExpr`|`int` collapses
+	and
+	`BusReq` -> `Bus` collapses
+
+	The method typehints here are not quite accurate. I'm not going to change them for simplicity, i.e.
+	(DFGExpr|BusReq) -> list[DFGExpr|int]|list[Bus] is too complex. 
+
+	For e.g. `get_dependencies` could be `(DFGExpr)->list[DFGExpr|int]` or `(BusReq)->Bus` depending on the subclass.
+	
+	Also, I don't think I can add type hints for generic classes without breaking python 2 syntax.
+
+	'''
 	def __init__(self):
-		self.table = {}
+		self.table = {} # type: typing.Union[dict[DFGExpr, DFGExpr], dict[BusReq, Bus]]
 		self.dbg_last_calc = None
 		self.dbg_has_last = False
 
-	def get_dependencies(self, key):
+	def get_dependencies(self, key): # type: (DFGExpr) -> list[DFGExpr]
 		raise Exception("abstract method")
 
-	def collapse_impl(self, key):
+	def collapse_impl(self, key): # type: (DFGExpr) -> DFGExpr
+		'''Collapses a tree/subtree, assuming all dependencies have been resolved'''
 		raise Exception("abstract method")
 
-	def collapse_tree(self, key):
+	def collapse_tree(self, key): # type: (DFGExpr) -> DFGExpr
+		'''Collapses a tree, resolving dependencies along the way.'''
 		timing = Timing("collapse_tree", enabled=False)
 		stack = [key]
 		loop_count = 0
@@ -26,7 +49,7 @@ class Collapser:
 				# wanted multiple times.
 				stack.pop()
 				continue
-			alldeps = self.get_dependencies(key)
+			alldeps = self.get_dependencies(key) # type: list
 			timing.phase("collapser loop # %s get_deps (%d) self %s" % (loop_count, len(alldeps), self.__class__))
 
 #			def study(table):
@@ -57,7 +80,8 @@ class Collapser:
 			if (newdeps==[]):
 				stack.pop()
 				assert(key not in self.table)
-				self.table[key] = self.collapse_impl(key)
+				result = self.collapse_impl(key)
+				self.table[key] = result
 				timing.phase("collapser loop # %s collapse_impl" % loop_count)
 			else:
 				stack += newdeps
@@ -66,6 +90,6 @@ class Collapser:
 #		print "collapser loop_count: %d" % loop_count
 		return self.table[key]
 
-	def lookup(self, key):
+	def lookup(self, key): # type: (DFGExpr) -> DFGExpr
 		# upcall from impl getting collapsed to find his dependencies' values
 		return self.table[key]

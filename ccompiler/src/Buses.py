@@ -3,7 +3,9 @@ from TraceType import *
 from ceillg2 import *
 from FieldOps import *
 #from ArithmeticFieldOps import *	# TODO plane bus zero depends on this; probably broken
-
+from TypeHintHelpers import always_false
+if always_false:
+	from Board import Board
 MAJOR_INPUT=0
 MAJOR_INPUT_ONE=1
 MAJOR_INPUT_NIZK=2
@@ -11,16 +13,22 @@ MAJOR_LOGIC=3
 MAJOR_OUTPUT=4
 
 class Bus:
-	def __init__(self, board, major):
+	'''
+	A boolean bus has a collection of wires in `wire_list`. They represents bits.
+
+	An arithmetic bus has only 1 wire, i.e. `len(wire_list)` should always be 1.
+	'''
+	def __init__(self, board, major): # type: (Board, int) -> None
 		assert(board.is_board())
 		self.board = board
 		self._major = major
 		self._order = self.board.assign_order()
 
-	def set_order(self, minor_order):
+	def set_order(self, minor_order): # type: (int) -> None
 		self._order = minor_order
 
 	def _tuple(self):
+		'''Used to sort buses, e.g. input buses (MAJOR_INPUT) before logic buses, logic buses before output buses'''
 		return (self._major, self._order)
 
 	def __hash__(self):
@@ -32,22 +40,41 @@ class Bus:
 	def assign_wires(self, wire_list):
 		assert(isinstance(wire_list, WireList))
 		self.wire_list = wire_list
+		'''wire_list is assigned in `ReqFactory`'''
 
-	def get_trace_type(self):	raise Exception("abstract in %s" % self)
-	def get_active_bits(self):	raise Exception("abstract in %s" % self)
-		# needs only be defined on trace_type ARITHMETIC_TYPE.
+	def get_trace_type(self): # type: () -> TraceType
+		raise Exception("abstract in %s" % self)
+	def get_active_bits(self):	 # type: () -> int
+		'''needs only be defined on trace_type `ARITHMETIC_TYPE`.'''
+		raise Exception("abstract in %s" % self)
 	def do_trace_count(self):	raise Exception("abstract in %s" % self)
-	def get_wire_count(self):	raise Exception("abstract in %s" % self)
-	def do_trace(self, j):		raise Exception("abstract in %s" % self)
-	def get_field_ops(self):	raise Exception("abstract in %s" % self)
+	def get_wire_count(self): # type: () -> int
+		'''
+		Returns how many wires this bus needs (other than the input wires). A bus has inputs, internal, and output wires. 
+		Thus, `get_wire_count` returns no. of internal + no. of output wires.
+		
+		Wire numbers identify wires that must have identical values.
+
+		For e.g. if a gate has multiple outgoing wires, then all of them have the same wire numbers.
+
+		This method is only used to allocate wire numbers.
+		
+		A good example to look at is `ArithmeticZeroPBus`, which makes use of 6 wires in addition to the input wires.
+		'''	
+		raise Exception("abstract in %s" % self)
+	def do_trace(self, j): # type: (int) -> Wire		
+		raise Exception("abstract in %s" % self)
+	def get_field_ops(self): # type: () -> list[FieldOp]
+		raise Exception("abstract in %s" % self)
 
 	def get_trace_count(self):
+		'''trace count is an approximate (upper bound) number of bits needed in a boolean type trace'''
 		# if trace_type==ARITHMETIC_TYPE, trace_count should be 1.
 		result = self.do_trace_count()
 		assert(self.get_trace_type()==BOOLEAN_TYPE or result==1)
 		return result
 
-	def get_trace(self, j):
+	def get_trace(self, j): # type: (int) -> Wire
 		assert(0<=j)
 		if (j<self.get_trace_count()):
 			result = self.do_trace(j)
@@ -109,8 +136,8 @@ class ZeroBus(BooleanBus):
 		assert(False)	# we always get zero-extended by Bus.get_trace
 
 class ConstantBooleanBus(BooleanBus):
-	# A bus that returns a constant BOOLEAN value
-	def __init__(self, board, value):
+	'''A bus that returns a constant BOOLEAN value'''
+	def __init__(self, board, value): # type: (Board, int) -> None
 		BooleanBus.__init__(self, board, MAJOR_LOGIC)
 		self.assert_int(value)
 		self.value = value
@@ -132,7 +159,7 @@ class ConstantBooleanBus(BooleanBus):
 			return self.board.zero_wire()
 
 class ConstBitAndBus(BooleanBus):
-	def __init__(self, board, value, bus):
+	def __init__(self, board, value, bus): # type: (Board, int, Bus) -> None
 		BooleanBus.__init__(self, board, MAJOR_LOGIC)
 		assert(bus.get_trace_type()==BOOLEAN_TYPE)
 		self.value = value
@@ -168,7 +195,7 @@ class ConstBitOrBus(BooleanBus):
 			return self.bus.do_trace(j)
 
 class ConstantBitXorBase(BooleanBus):
-	def __init__(self, board, value, bus):
+	def __init__(self, board, value, bus): # type: (Board, int, Bus) -> None
 		BooleanBus.__init__(self, board, MAJOR_LOGIC)
 		assert(bus.get_trace_type()==BOOLEAN_TYPE)
 		self.value = value
@@ -177,6 +204,12 @@ class ConstantBitXorBase(BooleanBus):
 		self._trace_count = max(ceillg2(self.value), bus.get_trace_count())
 
 	def _make_bit_map(self):
+		'''
+		bitmap records which bits are self.value are 1's
+
+		for e.g. 11001
+		will give {0: 0, 3: 1, 4: 2} as the 0th bit, 3rd bit, 4th bit are 1.
+		'''
 		self._bit_map = {}
 		_val = self.value
 		biti = 0
@@ -200,9 +233,15 @@ class ConstantBitXorBase(BooleanBus):
 	def wires_per_xor(self):
 		raise Exception("abstract")
 
-	def invert_field_op(self, comment, inputs, wires):
-		# len(wires) == wires_per_xor()
-		# emit output on wires[-1]
+	def invert_field_op(self, comment, inputs, wires): # type: (str, Wire, list[Wire]) -> list[FieldOp]
+		'''
+		When performing a XOR against `self.value`, 
+		we only need to invert those bits corresponding to bits of `self.value` that are 1. 
+
+		`len(wires) == wires_per_xor()`
+
+		emit output on `wires[-1]`
+		'''
 		raise Exception("abstract")
 
 	def get_field_ops(self):
@@ -213,6 +252,9 @@ class ConstantBitXorBase(BooleanBus):
 				count = self._bit_map[biti]
 				k = self.wires_per_xor()
 
+				# Recall the property of XOR: 
+				# Any bit XOR 0 is unchanged.
+				# Any bit XOR 1 is flipped, i.e. inverted.
 				cmds.extend(self.invert_field_op(
 					"bitxor bit %d" % biti,
 					self.bus.get_trace(biti),
@@ -228,12 +270,14 @@ class ConstantBitXorBase(BooleanBus):
 			return self.bus.do_trace(j)
 
 class AllOnesBase(BooleanBus):
-	# Test if all the inputs bits are ones. (A big wide AND gate.)
-	# We build LogicalNot as AllOnes(BitNot(x)):
-	# AllOnesBus(BitNot(000)==111) = 1 :: Not(0)=1
-	# AllOnesBus(BitNot(010)==101) = 0 :: Not(2)=0
-	# (And BitNot is just ConstantBitXorBus with neg1)
-	def __init__(self, board, bus):
+	'''
+	Test if all the inputs bits are ones. (A big wide AND gate.)
+	We build LogicalNot as AllOnes(BitNot(x)):
+	AllOnesBus(BitNot(000)==111) = 1 :: Not(0)=1
+	AllOnesBus(BitNot(010)==101) = 0 :: Not(2)=0
+	(And BitNot is just ConstantBitXorBus with neg1)
+	'''
+	def __init__(self, board, bus): # type: (Board, Bus) -> None
 		BooleanBus.__init__(self, board, MAJOR_LOGIC)
 		assert(bus.get_trace_type()==BOOLEAN_TYPE)
 		self.bus = bus
@@ -261,7 +305,11 @@ class AllOnesBase(BooleanBus):
 		return self.wire_list[-1]
 
 class LeftShiftBus(BooleanBus):
-	def __init__(self, board, bus, left_shift):
+	'''
+	Notice that there is no `RightShiftBus` class.
+	Because to achieve a right shift, we simply supply a negative `left_shift` value.
+	'''
+	def __init__(self, board, bus, left_shift): # type: (Board, Bus, int) -> None
 		BooleanBus.__init__(self, board, MAJOR_LOGIC)
 		self.assert_int(left_shift)
 		assert(bus.get_trace_type()==BOOLEAN_TYPE)
@@ -286,7 +334,7 @@ class LeftShiftBus(BooleanBus):
 			return self.bus.get_trace(parent_bit)
 
 class BinaryBooleanBus(BooleanBus):
-	def __init__(self, board, bus_left, bus_right):
+	def __init__(self, board, bus_left, bus_right): # type: (Board, Bus, Bus) -> None
 		BooleanBus.__init__(self, board, MAJOR_LOGIC)
 		assert(bus_left.get_trace_type()==BOOLEAN_TYPE)
 		assert(bus_right.get_trace_type()==BOOLEAN_TYPE)

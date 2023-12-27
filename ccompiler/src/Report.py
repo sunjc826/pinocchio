@@ -1,4 +1,5 @@
 class Report:
+	'''Utility class used to count how many operations of each type is used.'''
 	def __init__(self):
 		self.table = {}
 

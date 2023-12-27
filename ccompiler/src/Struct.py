@@ -8,14 +8,24 @@ class NoSuchStructField(Exception):
 class PointersCannotBeValues(Exception): pass
 
 class Field:
-	def __init__(self, name, type):
+	def __init__(self, name, type): # type: (str, Type) -> None
 		self.name = name
 		self.type = type
 
 	def __repr__(self):
 		return "%s %s" % (self.type, self.name)
 
-class Type: pass
+class Type:
+	def sizeof(self): # type: () -> int
+		'''
+		Returns the size of the type. Unit is in number of integers the type is comprised of. 
+		
+		e.g. IntType.sizeof() and UnsignedType.sizeof() always returns 1.
+		'''
+		raise Exception("abstract method")
+	def is_ptr_type(self): # type: () -> bool
+		raise Exception("abstract method")
+	
 
 class IntType(Type):
 	def sizeof(self):
@@ -34,7 +44,7 @@ class UnsignedType(IntType):
 	pass
 
 class ArrayType(Type):
-	def __init__(self, type, size):
+	def __init__(self, type, size): # type: (Type, int) -> None
 		self.type = type
 		self.size = size
 		assert(self.size!=None)
@@ -56,7 +66,7 @@ class ArrayType(Type):
 		return True
 
 class StructType(Type):
-	def __init__(self, label, fields):
+	def __init__(self, label, fields): # type: (str, list[Field]) -> None
 		self.label = label
 		self.fields = fields
 		self.offsets = [0]*(len(self.fields)+1)
@@ -75,10 +85,10 @@ class StructType(Type):
 				return i
 		raise NoSuchStructField(name)
 		
-	def offsetof(self, name):
+	def offsetof(self, name): # type: (str) -> int
 		return self.offsets[self.indexof(name)]
 
-	def get_field(self, name):
+	def get_field(self, name): # type: (str) -> Field
 		return self.fields[self.indexof(name)]
 
 	def __repr__(self):
@@ -93,7 +103,7 @@ class StructType(Type):
 		return False
 
 class PtrType(Type):
-	def __init__(self, type):
+	def __init__(self, type): # type: (Type) -> None
 		self.type = type
 
 	def sizeof(self):

@@ -3,12 +3,18 @@ from Storage import *
 from Struct import *
 from BitWidth import *
 from DFGOperator import *
-
+from TypeHintHelpers import always_false
+if always_false:
+	from Collapser import Collapser
+	from typing import Any
+	from vercomp import ExprCollapser
 class NonconstantArrayAccess(Exception):
 	def __init__(self, s):
 		Exception.__init__(self, s)
 
-class NonconstantExpression(Exception): pass
+class NonconstantExpression(Exception): 
+	'''Represents an expression that is not statically evaluable.'''
+	pass
 
 class UndefinedExpression(Exception): pass
 
@@ -22,8 +28,8 @@ class DFGFactory:
 	def __init__(self):
 		self.intern = {}
 
-	def create(self, dclass, *args):
-		def uid(obj):
+	def create(self, dclass, *args): # type: (type[DFGExpr], Any) -> DFGExpr
+		def uid(obj): # type: (Any) -> int | bool
 			#return id(obj)
 			if (type(obj)==types.ClassType
 				or type(obj)==types.InstanceType):
@@ -48,12 +54,11 @@ class DFGFactory:
 		pass
 
 	def verify(self):
-		# convince myself that all creations are being interned through the
-		# factory.
+		'''convince myself that all creations are being interned through the factory'''
 		pass
 
 class DFGExpr:
-	def __init__(self, factory):
+	def __init__(self, factory): # type: (DFGFactory) -> None
 		factory.verify()
 		self.factory = factory
 
@@ -64,22 +69,31 @@ class DFGExpr:
 
 	def __hash__(self):
 		return id(self)
+	
+	def collapse_dependencies(self): # type: () -> list[DFGExpr]
+		raise Exception("abstract method")
+	
+	def collapse_constants(self, collapser): # type: (Collapser) -> DFGExpr
+		raise Exception("abstract method")
+	
+	def evaluate(self, collapser): # type: (Collapser) -> DFGExpr | int
+		raise Exception("abstract method")
 
 class InputBase(DFGExpr):
-	def __init__(self, factory, storage_key):
+	def __init__(self, factory, storage_key): # type: (DFGFactory, StorageKey) -> None
 		DFGExpr.__init__(self, factory)
 		self.storage_key = storage_key
 
 	def __repr__(self):
 		return "(%s %s)" % (self.__class__.__name__, self.storage_key)
 
-	def evaluate(self, collapser):
+	def evaluate(self, collapser): # type: (Collapser) -> Any
 		return collapser.get_input(self.storage_key)
 
-	def collapse_dependencies(self):
+	def collapse_dependencies(self): # type: () -> list[DFGExpr]
 		return []
 
-	def collapse_constants(self, collapser):
+	def collapse_constants(self, collapser): # type: (Collapser) -> InputBase
 		return self
 
 	def __hash__(self):
@@ -94,21 +108,21 @@ class InputBase(DFGExpr):
 		return i
 
 class Input(InputBase):
-	def __init__(self, factory, storage_key):
+	def __init__(self, factory, storage_key): # type: (DFGFactory, StorageKey) -> None
 		InputBase.__init__(self, factory, storage_key)
 
 class NIZKInput(InputBase):
-	def __init__(self, factory, storage_key):
+	def __init__(self, factory, storage_key): # type: (DFGFactory, StorageKey) -> None
 		InputBase.__init__(self, factory, storage_key)
 
 class Undefined(DFGExpr):
-	def __init__(self, factory):
+	def __init__(self, factory): # type: (DFGFactory) -> None
 		DFGExpr.__init__(self, factory)
 
 	def __repr__(self):
 		return "Undefined"
 
-	def evaluate(self, collapser):
+	def evaluate(self, collapser): # type: (Collapser) -> Any
 		raise UndefinedExpression()
 
 	def collapse_dependencies(self):
@@ -118,14 +132,15 @@ class Undefined(DFGExpr):
 		return self
 
 class Constant(DFGExpr):
-	def __init__(self, factory, value):
+	def __init__(self, factory, value): # type: (DFGFactory, int) -> None
 		DFGExpr.__init__(self, factory)
+		assert(isinstance(value, int))
 		self.value = value
 
 	def __repr__(self):
 		return "(C %d)" % self.value
 
-	def evaluate(self, collapser):
+	def evaluate(self, collapser): # type: (Collapser) -> int
 		return self.value
 
 	def collapse_dependencies(self):
@@ -147,13 +162,17 @@ class Op(DFGExpr):
 	pass
 
 class BinaryOp(Op):
-	def __init__(self, factory, op, left, right):
+	def __init__(self, factory, op, left, right): # type: (DFGFactory, str, DFGExpr, DFGExpr) -> None
 		DFGExpr.__init__(self, factory)
 		self.op = op
+		'''string representation of the binary operator'''
 		self.left = left
+		'''left operand'''
 		self.right = right
+		'''right operand'''
 		assert(self.left!=None)
 		assert(self.right!=None)
+		# No data-dependent memory accesses
 		assert(not isinstance(self.left, StorageRef))
 		assert(not isinstance(self.right, StorageRef))
 		self.memo_repr = None
@@ -182,7 +201,7 @@ class BinaryOp(Op):
 	def collapse_dependencies(self):
 		return [self.left, self.right]
 
-	def collapse_constants(self, collapser):
+	def collapse_constants(self, collapser): # type: (ExprCollapser) -> BinaryOp
 		collapsed = self.factory.create(
 			self.__class__,
 			collapser.lookup(self.left),
@@ -199,12 +218,12 @@ class BinaryOp(Op):
 		return collapsed
 
 class BinaryMath(BinaryOp):
-	def __init__(self, factory, op, pyop, identity, left, right):
+	def __init__(self, factory, op, pyop, identity, left, right): # type: (DFGFactory, str, PyOp, int, DFGExpr, DFGExpr) -> None
 		BinaryOp.__init__(self, factory, op, left, right)
 		self.pyop = pyop
 		self.identity = identity
 
-	def evaluate(self, collapser):
+	def evaluate(self, collapser): # type: (Collapser) -> Any
 		return self.pyop(collapser.lookup(self.left), collapser.lookup(self.right))
 
 	def collapse_dependencies(self):
@@ -221,31 +240,31 @@ class BinaryMath(BinaryOp):
 
 
 class Add(BinaryMath):
-	def __init__(self, f, left, right):
+	def __init__(self, f, left, right): # type: (DFGFactory, DFGExpr, DFGExpr) -> None
 		BinaryMath.__init__(self, f, "+", PyOp(operator.add), 0, left, right)
 
 class Subtract(BinaryMath):
-	def __init__(self, f, left, right):
+	def __init__(self, f, left, right): # type: (DFGFactory, DFGExpr, DFGExpr) -> None
 		BinaryMath.__init__(self, f, "-", PyOp(operator.sub), 0, left, right)
 
 class Multiply(BinaryMath):
-	def __init__(self, f, left, right):
+	def __init__(self, f, left, right): # type: (DFGFactory, DFGExpr, DFGExpr) -> None
 		BinaryMath.__init__(self, f, "*", PyOp(operator.mul), 1, left, right)
 
 class Divide(BinaryMath):
-	def __init__(self, f, left, right):
+	def __init__(self, f, left, right): # type: (DFGFactory, DFGExpr, DFGExpr) -> None
 		BinaryMath.__init__(self, f, "/", PyOp(operator.div), None, left, right)
 
 class Modulo(BinaryMath):
-	def __init__(self, f, left, right):
+	def __init__(self, f, left, right): # type: (DFGFactory, DFGExpr, DFGExpr) -> None
 		BinaryMath.__init__(self, f, "%", PyOp(operator.mod), None, left, right)
 
 class Xor(BinaryMath):
-	def __init__(self, f, left, right):
+	def __init__(self, f, left, right): # type: (DFGFactory, DFGExpr, DFGExpr) -> None
 		BinaryMath.__init__(self, f, "^", PyOp(operator.xor), 0, left, right)
 
 class LeftShift(BinaryMath):
-	def __init__(self, f, left, right, bit_width):
+	def __init__(self, f, left, right, bit_width): # type: (DFGFactory, DFGExpr, DFGExpr, BitWidth) -> None
 		BinaryMath.__init__(self, f, "<<", LeftShiftOp(bit_width), 0, left, right)
 		self.bit_width = bit_width
 
@@ -253,7 +272,7 @@ class LeftShift(BinaryMath):
 		return [self.bit_width]
 
 class RightShift(BinaryMath):
-	def __init__(self, f, left, right, bit_width):
+	def __init__(self, f, left, right, bit_width): # type: (DFGFactory, DFGExpr, DFGExpr, BitWidth) -> None
 		BinaryMath.__init__(self, f, ">>", RightShiftOp(bit_width), 0, left, right)
 		self.bit_width = bit_width
 
@@ -261,42 +280,43 @@ class RightShift(BinaryMath):
 		return [self.bit_width]
 
 class BitOr(BinaryMath):
-	def __init__(self, f, left, right):
+	def __init__(self, f, left, right): # type: (DFGFactory, DFGExpr, DFGExpr) -> None
 		BinaryMath.__init__(self, f, "|", PyOp(operator.or_), 0, left, right)
 
 class BitAnd(BinaryMath):
-	def __init__(self, f, left, right):
+	def __init__(self, f, left, right): # type: (DFGFactory, DFGExpr, DFGExpr) -> None
 		BinaryMath.__init__(self, f, "&", PyOp(operator.and_), None, left, right)
 
 class LogicalAnd(BinaryMath):
-	def __init__(self, f, left, right):
+	def __init__(self, f, left, right): # type: (DFGFactory, DFGExpr, DFGExpr) -> None
 		BinaryMath.__init__(self, f, "&&", LogicalAndOp(), None, left, right)
 
 class CmpLT(BinaryOp):
-	def __init__(self, factory, left, right):
+	def __init__(self, factory, left, right): # type: (DFGFactory, DFGExpr, DFGExpr) -> None
 		BinaryOp.__init__(self, factory, "<", left, right)
 
 	def evaluate(self, collapser):
 		return collapser.lookup(self.left) < collapser.lookup(self.right)
 
 class CmpLEQ(BinaryOp):
-	def __init__(self, factory, left, right):
+	def __init__(self, factory, left, right): # type: (DFGFactory, DFGExpr, DFGExpr) -> None
 		BinaryOp.__init__(self, factory, "<=", left, right)
 
 	def evaluate(self, collapser):
 		return collapser.lookup(self.left) <= collapser.lookup(self.right)
 
 class CmpEQ(BinaryOp):
-	def __init__(self, factory, left, right):
+	def __init__(self, factory, left, right): # type: (DFGFactory, DFGExpr, DFGExpr) -> None
 		BinaryOp.__init__(self, factory, "==", left, right)
 
 	def evaluate(self, collapser):
 		return collapser.lookup(self.left) == collapser.lookup(self.right)
 
 class UnaryOp(Op):
-	def __init__(self, factory, op, expr):
+	def __init__(self, factory, op, expr): # type: (DFGFactory, str, DFGExpr) -> None
 		DFGExpr.__init__(self, factory)
 		self.op = op
+		'''str representation of unary operator'''
 		self.expr = expr
 
 	def __repr__(self):
@@ -328,14 +348,14 @@ class UnaryOp(Op):
 				*self.extra_create_args())
 
 class LogicalNot(UnaryOp):
-	def __init__(self, f, expr):
+	def __init__(self, f, expr): # type: (DFGFactory, DFGExpr) -> None
 		UnaryOp.__init__(self, f, "Not", expr)
 
 	def evaluate(self, collapser):
 		return not collapser.lookup(self.expr)
 
 class BitNot(UnaryOp):
-	def __init__(self, f, expr, bit_width):
+	def __init__(self, f, expr, bit_width): # type: (DFGFactory, DFGExpr, BitWidth) -> None
 		UnaryOp.__init__(self, f, "BitNot", expr)
 		self.bit_width = bit_width
 
@@ -346,7 +366,7 @@ class BitNot(UnaryOp):
 		return (~collapser.lookup(self.expr)) & self.bit_width.get_neg1()
 
 class Negate(UnaryOp):
-	def __init__(self, f, expr):
+	def __init__(self, f, expr): # type: (DFGFactory, DFGExpr) -> None
 		UnaryOp.__init__(self, f, "Negate", expr)
 
 	def __repr__(self):
@@ -408,7 +428,7 @@ class ArrayOp(Op):
 		assert(False)	# unimpl
 	
 class StorageRef(ArrayOp):
-	def __init__(self, factory, type, storage, idx):
+	def __init__(self, factory, type, storage, idx): # type: (DFGFactory, Type, Storage, int) -> None
 		ArrayOp.__init__(self, factory)
 		self.type = type
 		self.storage = storage
@@ -436,6 +456,6 @@ class StorageRef(ArrayOp):
 			# store pointers.
 		return self.factory.create(StorageRef, PtrType(self.type), self.storage, self.idx)
 
-	def deref(self):
+	def deref(self): # type: () -> StorageRef
 		assert(isinstance(self.type, PtrType))
 		return self.factory.create(StorageRef, self.type.type, self.storage, self.idx)

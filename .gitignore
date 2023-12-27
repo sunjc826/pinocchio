@@ -1,0 +1,8 @@
+__pycache__
+*.pyc
+ccompiler/external-code/ply-3.4*
+ccompiler/external-code/pycparser-2.08*
+ccompiler/external-code/dep
+ccompiler/input/build
+make.matrix
+get-pip.py

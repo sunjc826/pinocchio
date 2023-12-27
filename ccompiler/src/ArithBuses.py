@@ -1,13 +1,17 @@
 from Buses import *
 from ArithmeticFieldOps import *
+from TypeHintHelpers import always_false
+if always_false:
+	from Board import Board
 
+'''All operations used here are arithmetic operations.'''
 
 ##############################################################################
 # Arithmetic operators
 ##############################################################################
 
 class ArithmeticBus(Bus):
-	def __init__(self, board, major):
+	def __init__(self, board, major): # type: (Board, int) -> None
 		Bus.__init__(self, board, major)
 
 	def get_trace_type(self):
@@ -21,6 +25,7 @@ class ArithmeticBus(Bus):
 		return self.wire_list[-1]
 
 class ArithZero(ArithmeticBus):
+	'''A zero constant wire produced by multiplying one-wire (from `OneBus`) with constant 0'''
 	def __init__(self, board):
 		Bus.__init__(self, board, MAJOR_LOGIC)
 
@@ -77,7 +82,7 @@ class ArithmeticNIZKInputBus(ArithmeticInputBaseBus):
 		ArithmeticInputBaseBus.__init__(self, FieldNIZKInput, MAJOR_INPUT_NIZK, board, input_idx)
 
 class ArithmeticOutputBus(ArithmeticBus):
-	def __init__(self, board, bus_in, output_idx):
+	def __init__(self, board, bus_in, output_idx): # type: (Board, Bus, int) -> None
 		ArithmeticBus.__init__(self, board, MAJOR_OUTPUT)
 		# caller responsible to put outputs in order expected by C spec
 		self.assert_int(output_idx)
@@ -105,42 +110,49 @@ class OneInputBus(ArithmeticBus):
 		return 1
 
 class ArithmeticZeroPBus(ArithmeticBus):
-        def __init__(self, board, in_bus, in_bus_b):
-                ArithmeticBus.__init__(self, board, MAJOR_LOGIC)
-                self.board = board
-                self.in_bus = in_bus
-                self.in_bus_b = in_bus_b
+	'''
+	Takes 2 input wires, and checks for equality. Equivalently, checks if their difference is 0.
+	Outputs 1 for equality, else 0.
+	'''
+	def __init__(self, board, in_bus, in_bus_b): # type: (Board, Bus, Bus) -> None
+		ArithmeticBus.__init__(self, board, MAJOR_LOGIC)
+		self.board = board
+		self.in_bus = in_bus
+		self.in_bus_b = in_bus_b
 
-        def get_active_bits(self):
-                return 1
+	def get_active_bits(self):
+		return 1
 
-        def get_wire_count(self):
-                return 6
+	def get_wire_count(self):
+		return 6
 
-        def get_field_ops(self):
-                negb = FieldConstMul("zerop subtract negative", -1, self.in_bus_b.get_trace(0), self.wire_list[0])
-                diff = FieldAdd("zerop diff",
-                                WireList([self.in_bus.get_trace(0), self.wire_list[0]]),
-                                WireList([self.wire_list[1]]))
+	def get_field_ops(self):
+		negb = FieldConstMul("zerop subtract negative", -1, self.in_bus_b.get_trace(0), self.wire_list[0])
+		diff = FieldAdd("zerop diff",
+						WireList([self.in_bus.get_trace(0), self.wire_list[0]]),
+						WireList([self.wire_list[1]]))
 
-                fzp = FieldZeroP("zerop %s" % self.in_bus,
-                                   self.wire_list[1],
-                                   self.wire_list[2], self.wire_list[3])
-                inv = FieldConstMul("zerop inverse",
-                                    -1,
-                                    self.wire_list[2],
-                                    self.wire_list[4])
-                res = FieldAdd("zerop result",
-                               WireList([self.board.one_wire(),
-                                         self.wire_list[4]]),
-                               WireList([self.wire_list[5]]))
-                return [negb, diff, fzp, inv, res]
+		fzp = FieldZeroP("zerop %s" % self.in_bus,
+							self.wire_list[1],
+							self.wire_list[2], self.wire_list[3])
+		inv = FieldConstMul("zerop inverse",
+							-1,
+							self.wire_list[2],
+							self.wire_list[4])
+		res = FieldAdd("zerop result",
+						WireList([self.board.one_wire(),
+									self.wire_list[4]]),
+						WireList([self.wire_list[5]]))
+		return [negb, diff, fzp, inv, res]
 
 class ConstantArithmeticBus(ArithmeticBus):
-	# A bus that returns a constant ARITHMETIC value
-	# NB this emits a line even for the Constant 1, but it's a const-mul,
-	# which is free.
-	def __init__(self, board, value):
+	'''
+	A bus that returns a constant ARITHMETIC value
+
+	NB this emits a line even for the Constant 1, but it's a const-mul,
+	which is free.
+	'''
+	def __init__(self, board, value): # type: (Board, int) -> None
 		Bus.__init__(self, board, MAJOR_LOGIC)
 		self.assert_int(value)
 		self.value = value
@@ -157,7 +169,7 @@ class ConstantArithmeticBus(ArithmeticBus):
 				self.value, self.board.one_wire(), self.wire_list[0]) ]
 
 class ConstantMultiplyBus(ArithmeticBus):
-	def __init__(self, board, value, bus):
+	def __init__(self, board, value, bus): # type: (Board, int, ArithmeticBus) -> None
 		Bus.__init__(self, board, MAJOR_LOGIC)
 		self.assert_int(value)
 		assert(bus.get_trace_type()==ARITHMETIC_TYPE)
@@ -172,15 +184,16 @@ class ConstantMultiplyBus(ArithmeticBus):
 		return 1
 
 	def get_field_ops(self):
+		'''e.g. `const-mul-2 in 1 <1> out 1 <4>           # multiply-by-constant 2`'''
 		return [ FieldConstMul(
 				"multiply-by-constant %d" % self.value,
 				self.value, self.bus.get_trace(0), self.wire_list[0]) ]
 
 class ArithmeticConditionalBus(ArithmeticBus):
-	def __init__(self, board, buscond, bustrue, busfalse):
+	def __init__(self, board, buscond, bustrue, busfalse): # type: (Board, BooleanBus, ArithmeticBus, ArithmeticBus) -> None
 		Bus.__init__(self, board, MAJOR_LOGIC)
-                print buscond
-                print buscond.get_trace_count()
+		print(buscond)
+		print(buscond.get_trace_count())
 		assert(buscond.get_trace_type()==BOOLEAN_TYPE)
 		assert(buscond.get_trace_count()==1)
 		assert(bustrue.get_trace_type()==ARITHMETIC_TYPE)
@@ -198,6 +211,9 @@ class ArithmeticConditionalBus(ArithmeticBus):
 		return 5
 
 	def get_field_ops(self):
+		'''
+		Computes cond * result_if_cond_true + (1 - cond) * result_if_cond_false
+		'''
 		trueterm = self.wire_list[0]
 		minuscond = self.wire_list[1]
 		negcond = self.wire_list[2]
@@ -224,7 +240,7 @@ class ArithmeticConditionalBus(ArithmeticBus):
 		return cmds
 
 class BinaryArithmeticBus(ArithmeticBus):
-	def __init__(self, board, bus_left, bus_right, _active_bits):
+	def __init__(self, board, bus_left, bus_right, _active_bits): # type: (Board, ArithmeticBus, ArithmeticBus, int) -> None
 		ArithmeticBus.__init__(self, board, MAJOR_LOGIC)
 		assert(bus_left.get_trace_type()==ARITHMETIC_TYPE)
 		assert(bus_right.get_trace_type()==ARITHMETIC_TYPE)
@@ -239,7 +255,7 @@ class BinaryArithmeticBus(ArithmeticBus):
 		return self._active_bits
 
 class ArithAddBus(BinaryArithmeticBus):
-	def __init__(self, board, comment, bus_left, bus_right):
+	def __init__(self, board, comment, bus_left, bus_right): # type: (Board, str, ArithmeticBus, ArithmeticBus) -> None
 		self.comment = comment
 		max_bits = max(bus_left.get_active_bits(), bus_right.get_active_bits())
 		_active_bits = max_bits + 1
@@ -253,7 +269,7 @@ class ArithAddBus(BinaryArithmeticBus):
 				self.wire_list) ]
 
 class ArithMultiplyBus(BinaryArithmeticBus):
-	def __init__(self, board, bus_left, bus_right):
+	def __init__(self, board, bus_left, bus_right): # type: (Board, ArithmeticBus, ArithmeticBus) -> None
 		_active_bits = bus_left.get_active_bits()+bus_right.get_active_bits()
 		BinaryArithmeticBus.__init__(self, board, bus_left, bus_right, _active_bits)
 
@@ -269,7 +285,7 @@ class ArithMultiplyBus(BinaryArithmeticBus):
 ##############################################################################
 
 class JoinBus(Bus):
-	# Convert a BOOLEAN_TYPE bus into an ARITHMETIC_TYPE bus
+	'''Convert a BOOLEAN_TYPE bus into an ARITHMETIC_TYPE bus'''
 	def __init__(self, board, input_bus):
 		Bus.__init__(self, board, MAJOR_LOGIC)
 		assert(input_bus.get_trace_type()==BOOLEAN_TYPE)
@@ -326,10 +342,10 @@ class JoinBus(Bus):
 			return self.wire_list[-1]
 
 class SplitBus(Bus):
-	# Convert an ARITHMETIC_TYPE bus into a BOOLEAN_TYPE bus
-	def __init__(self, board, input_bus):
+	'''Convert an `ARITHMETIC_TYPE` bus into a `BOOLEAN_TYPE` bus'''
+	def __init__(self, board, input_bus): # type: (Board, Bus) -> Bus
 		Bus.__init__(self, board, MAJOR_LOGIC)
-                print input_bus
+		print(input_bus)
 		assert(input_bus.get_trace_type()==ARITHMETIC_TYPE)
 		self.input_bus = input_bus
 		self._trace_count = self.board.bit_width.truncate(
@@ -385,8 +401,9 @@ class ConstantBitXorBus(ConstantBitXorBase):
 	def wires_per_xor(self):
 		return 2
 
-	def invert_field_op(self, comment, in_wire, wires):
+	def invert_field_op(self, comment, in_wire, wires): # type: (str, Wire, list[Wire]) -> list[FieldOp]
 		(minus_wire, xor_wire) = wires
+		# NOT x = (1 - x) = 1 + (-1)*x
 		return [
 			FieldConstMul(comment, -1, in_wire, minus_wire),
 			FieldAdd(comment,
@@ -399,10 +416,11 @@ class AllOnesBus(AllOnesBase):
 		AllOnesBase.__init__(self, board, bus)
 
 	def and_field_op(self, comment, inputs, outputs):
+		'''The "and" operation is similar to multiplication'''
 		return FieldMul(comment, inputs, outputs)
 
 class BitAndBus(BinaryBooleanBus):
-	def __init__(self, board, bus_left, bus_right):
+	def __init__(self, board, bus_left, bus_right): # type: (Board, Bus, Bus) -> None
 		BinaryBooleanBus.__init__(self, board, bus_left, bus_right)
 
 	def get_wire_count(self):
@@ -423,42 +441,43 @@ class BitAndBus(BinaryBooleanBus):
 
 
 class EqlBusArith(ArithmeticBus):
-        """ Support for == using the zero-equal field operation"""
-        def __init__(self, board, bus_left, bus_right):
-                ArithmeticBus.__init__(self, board, MAJOR_LOGIC)
-                assert(bus_left.get_trace_count() == bus_right.get_trace_count())
-                self.board = board
-                self.bus_left = bus_left
-                self.bus_right = bus_right
-                self._trace_count = 1
+	""" Support for == using the zero-equal field operation"""
+	def __init__(self, board, bus_left, bus_right): # type: (Board, Bus, Bus) -> None
+		ArithmeticBus.__init__(self, board, MAJOR_LOGIC)
+		assert(bus_left.get_trace_count() == bus_right.get_trace_count())
+		self.board = board
+		self.bus_left = bus_left
+		self.bus_right = bus_right
+		self._trace_count = 1
 
-        def do_trace_count(self):
-                return self._trace_count
+	def do_trace_count(self):
+		return self._trace_count
 
-        def get_wire_count(self):
-                """Only 3 wires are needed, because the operation is (zerop (+ left (* -1 right)))"""
-                return 3
+	def get_wire_count(self):
+		"""Only 3 wires are needed, because the operation is (zerop (+ left (* -1 right)))"""
+		return 3
 
-        def get_trace_type(self):
-                # This seems to trigger a conversion to boolean *inputs*, when we really only need a boolean output.
+	def get_trace_type(self):
+		# This seems to trigger a conversion to boolean *inputs*, when we really only need a boolean output.
 
-                return BOOLEAN_TYPE
+		return BOOLEAN_TYPE
 
-        def get_field_ops(self):
-                cmds = []
-                comment = "Eql "
-                rightneg = self.wire_list[0]
-                cmds.append(FieldConstMul(comment+"-1 * right", -1, self.bus_right.do_trace(0), rightneg))
-                leftplusright = self.wire_list[1]
-                cmds.append(FieldAdd(comment + "left + (-1 * right)",
-                                     WireList([self.bus_left.get_trace(0), rightneg]),
-                                     WireList([leftplusright])))
+	def get_field_ops(self):
+		cmds = []
+		comment = "Eql "
+		rightneg = self.wire_list[0]
+		cmds.append(FieldConstMul(comment+"-1 * right", -1, self.bus_right.do_trace(0), rightneg))
+		leftplusright = self.wire_list[1]
+		cmds.append(FieldAdd(comment + "left + (-1 * right)",
+								WireList([self.bus_left.get_trace(0), rightneg]),
+								WireList([leftplusright])))
 
-                result = self.wire_list[2]
-                cmds.append(FieldZeroP(comment + "zerop(left + (-1 * right))",
-                                       leftplusright,
-                                       result))
-                return cmds
+		result = self.wire_list[2]
+		# Isn't this a bug? There is no m_wire argument provided for FieldZeroP::__init__
+		cmds.append(FieldZeroP(comment + "zerop(left + (-1 * right))",
+								leftplusright,
+								result))
+		return cmds
 
 class EqlBusBoolean(BooleanBus):
         """Support for == using boolean operations implemented in the field"""
@@ -526,7 +545,7 @@ def make_xnor(board, left_bus, right_bus, j, wire_list):
         return cmds
 
 class OrFamilyBus(BinaryBooleanBus):
-	def __init__(self, board, bus_left, bus_right, product_coeff, c_name):
+	def __init__(self, board, bus_left, bus_right, product_coeff, c_name): # type: (Board, Bus, Bus, int, str) -> None
 		BinaryBooleanBus.__init__(self, board, bus_left, bus_right)
 		self.product_coeff = product_coeff
 		self.c_name = c_name
@@ -539,6 +558,9 @@ class OrFamilyBus(BinaryBooleanBus):
 		for out in range(self.get_trace_count()):
 			comment = "%s bit %d " % (self.c_name, out)
 			# (a+b)-k(ab)
+			# i.e. 
+			# a OR b = a + b - ab
+			# a XOR b = a + b - 2ab
 			aplusb = self.wire_list[out*4]
 			cmds.append(FieldAdd(comment+"a+b",
 				WireList([self.bus_left.get_trace(out),
@@ -562,10 +584,12 @@ class OrFamilyBus(BinaryBooleanBus):
 		return self.wire_list[j*4+3]
 
 class BitOrBus(OrFamilyBus):
+	'''Bitwise OR using arithmetic operations'''
 	def __init__(self, board, bus_left, bus_right):
 		OrFamilyBus.__init__(self, board, bus_left, bus_right, -1, "or")
 
 class XorBus(OrFamilyBus):
+	'''Bitwise XOR using arithmetic operations'''
 	def __init__(self, board, bus_left, bus_right):
 		OrFamilyBus.__init__(self, board, bus_left, bus_right, -2, "xor")
 

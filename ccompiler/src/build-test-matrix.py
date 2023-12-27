@@ -10,28 +10,46 @@ from App import App
 BUILD="build/"
 GCC="gcc -g -I../../common -Ibuild/".split(' ')
 
-def dash_to_under(s):
+def dash_to_under(s): # type: (str) -> str
 	if (s[0]=="-"):
 		s = "_"+s[1:]
 	return s
 
 class OneLiner:
-	def __init__(self, line):
+	'''
+	Emits
+	<line>
+	'''
+	def __init__(self, line): # type: (str) -> None
 		self.line = line
 
 	def emit(self):
 		return self.line
 
 class Comment(OneLiner):
-	def __init__(self, line):
+	'''
+	Emits
+	<line>
+	'''
+	def __init__(self, line): # type: (str) -> None
 		OneLiner.__init__(self, line)
 
+
 class Directive(OneLiner):
-	def __init__(self, line):
+	'''
+	Emits
+	<line>
+	'''
+	def __init__(self, line): # type: (str) -> None
 		OneLiner.__init__(self, line)
 
 class Make:
-	def __init__(self, output, inputs, cmdlist):
+	'''
+	Emits
+	<output>: <inputs...>
+		<cmdlist...>
+	'''
+	def __init__(self, output, inputs, cmdlist): # type: (str, list[str], list[str]) -> None
 		self.output = output
 		self.inputs = inputs
 		self.cmdlist = cmdlist
@@ -53,11 +71,16 @@ class Make:
 			rule)
 
 class BuildTestMatrix:
+	'''
+	The output Makefile is called make.matrix
+	make_rules: The individual Makefile targets
+	precious_targets: The result of the Makefile matrix-all default target
+	'''
 	def __init__(self):
 		apps = App.defaultApps() 
-		self.make_rules = []
-		self.precious_targets = []
-		self.random_headers_created = set()
+		self.make_rules = [] # type: list[str]
+		self.precious_targets = [] # type: list[str]
+		self.random_headers_created = set() # type: set[str]
 
 		self.make_random_header = BUILD+"make-random-header"
 # obsoleted by include
@@ -80,18 +103,20 @@ class BuildTestMatrix:
 		self.make_rules.append(Directive("include make.in\n"))
 
 		makefp = open("make.matrix", "w")
- 		makefp.write("PYTHON=python\n\n")
+		makefp.write("PYTHON=python2\n\n")
 		for makerule in self.make_rules:
 			makefp.write(makerule.emit())
 		makefp.close()
-
-	def make(self, output, inputs, cmdlist):
+	
+	def make(self, output, inputs, cmdlist): # type: (str, list[str], list[str]) -> None
+		'''Adds a makefile target'''
 		self.make_rules.append(Make(output, inputs, cmdlist))
 
-	def precious(self, target):
+	def precious(self, target): # type: (str) -> None
+		'''Adds a target to the matrix-all target'''
 		self.precious_targets.append(target)
 
-	def get_random_config(self, app, param):
+	def get_random_config(self, app, param): # type: (App, int) -> dict[str, int]
 		gcc = subprocess.Popen([
 			"gcc",
 			"-DQUERY_RANDOM_CONFIG",
@@ -104,17 +129,17 @@ class BuildTestMatrix:
 		text = grep.communicate()[0]
 		grep.stdout.close()
 		lines = text.split('\n')
-		config = {}
+		config = {} # type: dict[str, int]
 		for line in lines:
 			fields = line.split()
 			if (len(fields)<4):
 				continue
 			var = fields[2].replace("'", "")
-			value = eval(fields[3])
+			value = eval(fields[3]) # type: int
 			config[var] = value
 		return config
 
-	def add_random_header(self, random_config):
+	def add_random_header(self, random_config): # type: (dict[str, int]) -> str
 		random_header = BUILD+"random-header-%d-%d.h" % (
 			random_config["RANDOM_SIZE"], random_config["RANDOM_REDUCE"])
 		if (random_header not in self.random_headers_created):
@@ -128,7 +153,7 @@ class BuildTestMatrix:
 			self.random_headers_created.add(random_header)
 		return random_header
 
-	def build(self, app, param, bitwidth):
+	def build(self, app, param, bitwidth): # type: (App, int, int) -> None
 		random_config = self.get_random_config(app, param)
 		needs_random = "RANDOM_SIZE" in random_config
 

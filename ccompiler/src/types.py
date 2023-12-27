@@ -35,18 +35,18 @@ ast = parser.parse(test)
 #print ast.show()
 for (name, child) in ast.children():
 	try:
-		print
-		print child.show()
-		print child.__dict__
-		print child.decl.__dict__
-		print child.decl.type.__dict__
-		print child.decl.type.args.__dict__
+		print("\n")
+		print(child.show())
+		print(child.__dict__)
+		print(child.decl.__dict__)
+		print(child.decl.type.__dict__)
+		print(child.decl.type.args.__dict__)
 		for param in child.decl.type.args.params:
-			print param.__dict__
+			print(param.__dict__)
 	except: pass
 
 	try:
-		print child.body.__dict__
-		print child.body.block_items[0].lvalue.__dict__
-		print child.body.block_items[0].lvalue.name.__dict__
+		print(child.body.__dict__)
+		print(child.body.block_items[0].lvalue.__dict__)
+		print(child.body.block_items[0].lvalue.name.__dict__)
 	except: pass

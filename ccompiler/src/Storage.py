@@ -1,11 +1,16 @@
 ##############################################################################
 
-# Storage objects are *NOT* equivalent just because they have
-# equal labels! When we call a subroutine that replaces the name 'x'
-# with a new x, the new x 'allocates' new Storage, so that refs to
-# x can point to it, without it aliasing the previous x.
+
 
 class Storage:
+	'''
+	Represents a memory location.
+	
+	Storage objects are *NOT* equivalent just because they have
+	equal labels! When we call a subroutine that replaces the name 'x'
+	with a new x, the new x 'allocates' new Storage, so that refs to
+	x can point to it, without it aliasing the previous x.
+	'''
 	def __init__(self, label, size):
 		self.label = label
 		self.size = size
@@ -21,7 +26,7 @@ class Storage:
 		#return "%s" % self.label
 
 class Null(Storage):
-	# somewhere for undefined pointers to point.
+	'''somewhere for undefined pointers to point.'''
 	def __init__(self):
 		Storage.__init__(self, "null", 0)
 
@@ -33,7 +38,7 @@ class Null(Storage):
 class Key: pass
 
 class Symbol(Key):
-	def __init__(self, name):
+	def __init__(self, name): # type: (str) -> None
 		self.name = name
 
 	def __hash__(self):
@@ -48,7 +53,7 @@ class Symbol(Key):
 		return self.name
 
 class PseudoSymbol(Symbol):
-	def __init__(self, name):
+	def __init__(self, name): # type: (str) -> None
 		Symbol.__init__(self, name)
 		# NB will fail (on __class__ test) to compare equal to an equivalent
 		# Symbol actually defined in C file.
@@ -57,7 +62,7 @@ class PseudoSymbol(Symbol):
 		return "~%s" % self.name
 
 class StorageKey(Key):
-	def __init__(self, storage, idx):
+	def __init__(self, storage, idx): # type: (Storage, int) -> None
 		self.storage = storage
 		self.idx = idx
 

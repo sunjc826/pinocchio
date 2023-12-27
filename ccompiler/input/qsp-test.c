@@ -9,7 +9,7 @@
 #include <unistd.h> /* For sleep() */
 #include <math.h>
 
-#include "wire-io.h"
+#include "../../common/wire-io.h"
 
 // IL = Compiler's internal intermediate language: C-equivalent expression graph
 // ARITH = Jon's Python code that evaluates an arithmetic circuit

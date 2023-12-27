@@ -1,9 +1,13 @@
+
 from Buses import *
 from TraceType import *
 import DFG
-
+from TypeHintHelpers import always_false
+if always_false:
+	from ReqFactory import ReqFactory
+	from typing import Callable, Literal
 class BaseReq:
-	def __init__(self, reqfactory, expr, type):
+	def __init__(self, reqfactory, expr, type): # type: (ReqFactory, DFG.DFGExpr, TraceType) -> None
 		assert(reqfactory.is_req_factory())
 #		assert(isinstance(expr, DFGExpr))
 		assert(isinstance(type, TraceType))
@@ -31,7 +35,7 @@ class BaseReq:
 	def make_req(self, expr, type):
 		return self.reqfactory.make_req(expr, type)
 
-	def get_bus_from_req(self, req):
+	def get_bus_from_req(self, req): # type: (BusReq) -> Bus
 		return self.reqfactory.collapser().lookup(req)
 
 	def get_bus(self, expr, type):
@@ -41,25 +45,28 @@ class BaseReq:
 		return self.reqfactory.get_board()
 
 class BusReq(BaseReq):
-	def __init__(self, reqfactory, expr, type):
+	def __init__(self, reqfactory, expr, type): # type: (ReqFactory, DFG.DFGExpr, TraceType) -> None
 		BaseReq.__init__(self, reqfactory, expr, type)
 
-	# subclass defines what happens when request is for the type
-	# that the operator generates naturally.
-	def natural_type(self):
+	
+	def natural_type(self): # type: () -> TraceType
+		'''
+		subclass defines what happens when request is for the type
+		that the operator generates naturally.
+		'''
 		raise Exception("abstract method")
 
-	def natural_dependencies(self):
+	def natural_dependencies(self): # type: () -> list[BusReq]
 		raise Exception("abstract method in %s" % self.__class__)
 
-	def natural_impl(self):
+	def natural_impl(self): # type: () -> Bus
 		raise Exception("abstract method")
 
-	# we define what happens when the request is for the opposite type
 	def _natural_req(self):
+		'''we define what happens when the request is for the opposite type'''
 		return self.__class__(self.reqfactory, self.expr, self.natural_type())
 
-	def get_dependencies(self):
+	def get_dependencies(self): # type: () -> list[BusReq]
 		if (self.natural_type() != self.type):
 			return [self._natural_req()]
 		else:
@@ -69,13 +76,15 @@ class BusReq(BaseReq):
 		return self.reqfactory.collapse_req(self)
 
 class BinaryOpReq(BusReq):
-	# A binary op knows it has two input arguments (and hence knows
-	# how to specify them as dependencies and find their busses later),
-	# and can also detect and convert the operation into an optimized
-	# version when one input is a constant expression.
-	def __init__(self, reqfactory, expr, type):
+	'''
+	A binary op knows it has two input arguments (and hence knows
+	how to specify them as dependencies and find their busses later),
+	and can also detect and convert the operation into an optimized
+	version when one input is a constant expression.
+	'''
+	def __init__(self, reqfactory, expr, type): # type: (ReqFactory, DFG.BinaryOp, TraceType) -> None
 		BusReq.__init__(self, reqfactory, expr, type)
-
+		
 		if (self.has_const_opt() and isinstance(expr.left, DFG.Constant)):
 			self.is_const_opn = True
 			self._const_expr = expr.left
@@ -94,18 +103,22 @@ class BinaryOpReq(BusReq):
 			self.expr.left.__class__,
 			self.expr.right.__class__,)
 
-	# return true if subclass implements const_impl
-	def has_constant_opt(self):
+	
+	def has_constant_opt(self): # type: () -> bool
+		'''return true if subclass implements `const_impl`'''
 		raise Exception("abstract method")
 
-	# return appropriate bus for the constant optimization case
-	# NB this assumes the operation is commutative, since subclass
-	# impl receives no argument order information in this case.
-	def const_impl(self, const_expr, var_bus):
+	
+	def const_impl(self, const_expr, var_bus): # type: (DFG.Constant, Bus) -> Bus
+		'''
+		return appropriate bus for the constant optimization case
+		NB this assumes the operation is commutative, since subclass
+		impl receives no argument order information in this case.
+		'''
 		raise Exception("abstract method")
 
-	# return appropriate bus for the case where both args are variable
-	def var_impl(self, var_bus):
+	def var_impl(self, var_bus): # type: (Bus) -> Bus
+		'''return appropriate bus for the case where both args are variable'''
 		raise Exception("abstract method")
 
 	def _variable_req(self):
@@ -120,7 +133,7 @@ class BinaryOpReq(BusReq):
 				self.make_req(self.expr.right, self.natural_type())
 				];
 
-	def _core_impl(self, transform):
+	def _core_impl(self, transform): # type: ( Callable[[Bus],Bus] ) -> Bus
 		if (self.is_const_opn):
 			var_bus = self.get_bus_from_req(self._variable_req())
 			return self.const_impl(self._const_expr, transform(var_bus))
@@ -134,7 +147,7 @@ class BinaryOpReq(BusReq):
 			return self.var_impl(*busses)
 
 	def natural_impl(self):
-		def identity(bus):
+		def identity(bus): # type: (Bus) -> Bus
 			return bus
 
 		def truncate(bus):
@@ -211,8 +224,10 @@ class LogicalNotReq(NotFamily):
 		return self.make_logical_not(self.get_bus_from_req(self._req()))
 
 class LogicalCastReq(NotFamily):
-	# cast a wide value (perhaps one that came as arithmetic) down to
-	# a one-bit boolean truth value by testing all of its bits.
+	'''
+	cast a wide value (perhaps one that came as arithmetic) down to
+	a one-bit boolean truth value by testing all of its bits.
+	'''
 	def __init__(self, reqfactory, expr, type):
 		NotFamily.__init__(self, reqfactory, expr, type)
 
@@ -252,7 +267,7 @@ class ShiftReq(BusReq):
 			self.get_bus_from_req(self._req()),
 			self.sign() * self.expr.right.value)
 
-	def sign(self):
+	def sign(self): # type: () -> Literal[1, -1]
 		raise Exception("abstract method")
 
 class LeftShiftReq(ShiftReq):
@@ -286,7 +301,7 @@ class BitAndReq(BooleanBinaryReq):
 
 	def has_const_opt(self): return True
 
-	def const_impl(self, const_expr, variable_bus):
+	def const_impl(self, const_expr, variable_bus): # type: (DFG.Constant, Bus) -> ConstBitAndBus
 		return ConstBitAndBus(self.board(), const_expr.value, variable_bus)
 
 class BitOrReq(BooleanBinaryReq):
@@ -295,7 +310,7 @@ class BitOrReq(BooleanBinaryReq):
 
 	def has_const_opt(self): return True
 
-	def const_impl(self, const_expr, variable_bus):
+	def const_impl(self, const_expr, variable_bus): # type: (DFG.Constant, Bus) -> ConstBitOrBus
 		return ConstBitOrBus(self.board(), const_expr.value, variable_bus)
 
 class XorReq(BooleanBinaryReq):
