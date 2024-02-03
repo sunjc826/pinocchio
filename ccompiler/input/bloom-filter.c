@@ -1,7 +1,5 @@
 #include "bloom-filter-ifc.h"
 
-#define LOOP_LIMIT 1000
-
 int
 runtime_mod(int a, int b, int num_loops /* must be known at compile time */)
 {
