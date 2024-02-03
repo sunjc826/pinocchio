@@ -1,0 +1,3 @@
+[submodule "Nova"]
+	path = Nova
+	url = git@github.com:sunjc826/Nova.git
