@@ -1,3 +1,5 @@
+import os
+APP_NAME = os.environ["VC_APP_NAME"]
 class App:
 	def __init__(self, name, params=None, bitwidths=None, cached_construction=False, ignore_overflow=False):
 		# type: (str, list[int] | None, list[int] | None, bool, bool) -> None
@@ -26,7 +28,8 @@ class App:
 			#App("lgca", bitwidths=[32]),
 			#App("sha", params=[0], bitwidths=[32], cached_construction=True),
 			#App("sha", params=[1], bitwidths=[32], cached_construction=True),
-			App("my-test")
+			# App("my-test")
+			App(APP_NAME)
 			]
 		return apps
 

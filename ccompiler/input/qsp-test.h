@@ -33,7 +33,7 @@ extern void qsp_outsource(int* in, int in_count, int* out, int out_count);
 	} \
 
 void rand_core_inner(int iter, int inSizeBytes, int outSizeBytes);
-
+void rand_core(int iter);
 #else
 #error No outsource mode specified
 #endif

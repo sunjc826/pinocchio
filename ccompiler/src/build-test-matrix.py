@@ -211,6 +211,8 @@ class BuildTestMatrix:
 		moreflags = []
 		if (app.ignore_overflow):
 			moreflags += ["--ignore-overflow", "True"]
+		if os.environ["VC_LOOP_SANITY_LIMIT"]:
+			moreflags += ["--loop-sanity-limit", os.environ["VC_LOOP_SANITY_LIMIT"]]
 
 		output = BUILD+app_base+".arith"
 		inputs = [ app.name+".c" ]

@@ -1,0 +1,6 @@
+CompileFlags:
+  Add:
+    - -xc++
+    - -I./ccompiler/input/
+    - -DQSP_TEST
+    - -DCLANGD

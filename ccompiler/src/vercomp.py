@@ -512,9 +512,9 @@ class Vercomp:
 		val = symtab.lookup(key)
 		if (isinstance(val, StorageRef)):
 			newval = symtab.lookup(val.key())
-			print("eager_lookup converts %s to %s" % (val, newval))
+			# print("eager_lookup converts %s to %s" % (val, newval))
 			val = newval
-		print("eager_lookup of %s returns %s" % (key, val))
+		# print("eager_lookup of %s returns %s" % (key, val))
 		return val
 
 	def coerce_value(self, expr, symtab): # type: (DFGExpr, Symtab) -> DFGExpr

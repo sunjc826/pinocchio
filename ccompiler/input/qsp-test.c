@@ -8,7 +8,11 @@
 #include <endian.h>
 #include <unistd.h> /* For sleep() */
 #include <math.h>
-
+// For intellisense purposes only
+#if defined(CLANGD)
+#include "qsp-test.h"
+#include "eqtest-ifc.h"
+#endif
 #include "../../common/wire-io.h"
 
 // IL = Compiler's internal intermediate language: C-equivalent expression graph
