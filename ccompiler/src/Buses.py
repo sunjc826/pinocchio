@@ -27,6 +27,15 @@ class Bus:
 	def set_order(self, minor_order): # type: (int) -> None
 		self._order = minor_order
 
+	def is_runtime_input(self): # type: () -> bool
+		return self._major == MAJOR_INPUT or self._major == MAJOR_INPUT_NIZK
+
+	def is_one_input(self): # type: () -> bool
+		return self._major == MAJOR_INPUT_ONE
+
+	def is_output(self): # type: () -> bool
+		return self._major == MAJOR_OUTPUT
+
 	def _tuple(self):
 		'''Used to sort buses, e.g. input buses (MAJOR_INPUT) before logic buses, logic buses before output buses'''
 		return (self._major, self._order)
@@ -65,6 +74,9 @@ class Bus:
 	def do_trace(self, j): # type: (int) -> Wire		
 		raise Exception("abstract in %s" % self)
 	def get_field_ops(self): # type: () -> list[FieldOp]
+		raise Exception("abstract in %s" % self)
+	def get_rs_synthesis(self): # type: () -> str
+		'''synthesize Rust code'''
 		raise Exception("abstract in %s" % self)
 
 	def get_trace_count(self):

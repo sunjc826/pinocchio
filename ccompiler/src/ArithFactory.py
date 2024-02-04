@@ -4,8 +4,8 @@ from DFG import *
 from ArithBusReq import *
 
 class ArithFactory(ReqFactory):
-	def __init__(self, output_filename, circuit_inputs, circuit_nizk_inputs, circuit_outputs, bit_width):
-		ReqFactory.__init__(self, output_filename, circuit_inputs, circuit_nizk_inputs, circuit_outputs, bit_width)
+	def __init__(self, app_name, output_filename, nova_circuit_rs_dir, circuit_inputs, circuit_nizk_inputs, circuit_outputs, bit_width):
+		ReqFactory.__init__(self, app_name, output_filename, nova_circuit_rs_dir, circuit_inputs, circuit_nizk_inputs, circuit_outputs, bit_width)
 
 	def type(self):
 		return ARITHMETIC_TYPE

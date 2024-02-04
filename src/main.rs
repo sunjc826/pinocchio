@@ -1,8 +1,9 @@
+mod bloom_filter;
 mod circuits;
 mod minroot;
 mod runner;
 mod types;
-use minroot::run;
+
 fn main() {
-    run();
+    bloom_filter::run();
 }

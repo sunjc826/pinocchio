@@ -1,8 +1,10 @@
 import operator
 import os
+import subprocess
 import sys
 import traceback
-
+import CaseHelper
+import jinja
 from Collapser import Collapser
 from Board import Board
 from Report import Report
@@ -22,8 +24,8 @@ C AST -> DFGExpr -> BusReq -> Bus ---(Assign wires to buses)---> FieldOps -> Out
 '''
 
 class ReqFactory(Collapser):
-	def __init__(self, output_filename, circuit_inputs, circuit_nizk_inputs, circuit_outputs, bit_width):
-		# type: (str, list[Input], list[NIZKInput], list[tuple[Key, DFGExpr]], BitWidth) -> None
+	def __init__(self, app_name, output_filename, nova_circuit_rs_dir, circuit_inputs, circuit_nizk_inputs, circuit_outputs, bit_width):
+		# type: (str, str, str, list[Input], list[NIZKInput], list[tuple[Key, DFGExpr]], BitWidth) -> None
 		Collapser.__init__(self)
 
 		# Setup
@@ -45,6 +47,9 @@ class ReqFactory(Collapser):
 
 		# Generation of output file from FieldOps
 		self.emit(output_filename)
+
+		# Generation of rust files
+		self.emit_rs(app_name, nova_circuit_rs_dir)
 
 		# Sanity checking and optimization statistics collection
 		self.report()
@@ -221,6 +226,43 @@ output 13                                #
 				ofp.write("%s\n" % repr(op))
 		ofp.close()
 		os.rename(tmp_output_filename, output_filename)
+
+	def emit_rs(self, app_name, nova_circuit_rs_dir): # type: (str, str) -> None
+		print(app_name)
+		camelcase_app_name = CaseHelper.kebab_to_camel(app_name)
+		snakecase_app_name = CaseHelper.kebab_to_snake(app_name)
+		rs_circuit_struct_name = "%sCircuit" % camelcase_app_name
+		
+		# The following logic assumes that the bus list is laid out in the format
+		# input..., one-input, logic buses, output...
+		# We also assume that one input bus corresponds to one input wire
+		num_input_wires = 0
+		while num_input_wires < len(self.bus_list) and self.bus_list[num_input_wires].is_runtime_input():
+			num_input_wires += 1
+		
+		num_output_wires = 0
+		while num_output_wires < len(self.bus_list) and self.bus_list[len(self.bus_list) - num_output_wires - 1].is_output():
+			num_output_wires += 1
+				
+		rs_arity = num_input_wires
+
+		rs_synthesize = ""
+
+		
+		
+		environment = jinja.Environment(loader=jinja.FileSystemLoader(nova_circuit_rs_dir))
+		template = environment.get_template("pinocchio.template")
+		content = template.render(
+			rs_circuit_struct_name = rs_circuit_struct_name,
+			rs_arity = rs_arity,
+			rs_synthesize = rs_synthesize
+		)
+
+		output_file_name = "%s/%s.rs" % (nova_circuit_rs_dir, snakecase_app_name)
+		print("Generating file in " + output_file_name)
+		with open(output_file_name, mode = "w") as output:
+			output.write(content)
+
 
 	def report(self):
 		'''Make a summary of the number of various operations used.'''

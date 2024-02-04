@@ -1152,6 +1152,8 @@ def main(argv):
 	parser = argparse.ArgumentParser(description='Compile C to QSP/QAP')
 	parser.add_argument('cfile', metavar='<cfile>',
 		help='a C file to compile')
+	parser.add_argument('--app-name', dest='app_name', 
+		help="app name, conventionally in kebab case")
 	parser.add_argument('--print', dest='print_exprs',
 		help="print output expressions on stdout")
 	parser.add_argument('--il', dest='il_file',
@@ -1172,6 +1174,8 @@ def main(argv):
 		help='limit on statically-measured loop unrolling', default=1000000)
 	parser.add_argument('--progress', dest='progress',
 		help='print progress messages during compilation')
+	parser.add_argument('--nova-circuit-rs-dir', dest='nova_circuit_rs_dir', required=True,
+		help="directory in which Rust output files are written")
 
 	args = force_cast(parser.parse_args(argv), ArgsObject)
 
@@ -1217,14 +1221,14 @@ def main(argv):
 		timing.phase("emit_arith")
 		if (vercomp.progress):
 			print("Compilation complete; emitting arithmetic circuit output file.")
-		ArithFactory(args.arith_file, vercomp.inputs, vercomp.nizk_inputs, vercomp.output, vercomp.bit_width)
+		ArithFactory(args.app_name, args.arith_file, args.nova_circuit_rs_dir, vercomp.inputs, vercomp.nizk_inputs, vercomp.output, vercomp.bit_width)
 		
 	# boolean circuit output file
 	if (args.bool_file!=None):
 		timing.phase("emit_bool")
 		if (vercomp.progress):
 			print("Compilation complete; emitting boolean circuit output file.")
-		BooleanFactory(args.bool_file, vercomp.inputs, vercomp.nizk_inputs, vercomp.output, vercomp.bit_width)
+		BooleanFactory(args.app_name, args.bool_file, args.nova_circuit_rs_dir, vercomp.inputs, vercomp.nizk_inputs, vercomp.output, vercomp.bit_width)
 
 	timing.phase("done")
 

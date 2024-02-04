@@ -213,11 +213,14 @@ class BuildTestMatrix:
 			moreflags += ["--ignore-overflow", "True"]
 		if os.environ["VC_LOOP_SANITY_LIMIT"]:
 			moreflags += ["--loop-sanity-limit", os.environ["VC_LOOP_SANITY_LIMIT"]]
+		if os.environ["VC_NOVA_CIRCUIT_RS_DIR"]:
+			moreflags += ["--nova-circuit-rs-dir", os.environ["VC_NOVA_CIRCUIT_RS_DIR"]]
 
 		output = BUILD+app_base+".arith"
 		inputs = [ app.name+".c" ]
 		self.make(output, inputs,
 			["$(PYTHON) ../src/vercomp.py"]+inputs+[
+				"--app-name", app.name,
 				"--arith", output,
 				"--bit-width", str(bitwidth),
 				"--cpparg"]

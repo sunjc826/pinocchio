@@ -1,5 +1,5 @@
 use bellpepper_core::{num::AllocatedNum, ConstraintSystem, SynthesisError};
-use ff::Field;
+use ff::{derive::bitvec::store::BitStore, Field};
 use nova_snark::traits::{circuit::StepCircuit, Group};
 use num_bigint::BigUint;
 

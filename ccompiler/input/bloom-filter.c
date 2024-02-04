@@ -33,6 +33,8 @@ polynomial_hash(int power, int element[NUM_CHARS])
             power + (MAX_CHAR + BLOOM_FILTER_SIZE - 1) / BLOOM_FILTER_SIZE
         );
     }
+    
+    
     return hash_value;
 }
 
@@ -118,6 +120,7 @@ outsource(struct Input *input, struct Output *output)
 #   else
         for (bloom_filter_iterator = 0; bloom_filter_iterator < BLOOM_FILTER_SIZE; bloom_filter_iterator += 1)
         {
+            output->next_filter_state[bloom_filter_iterator] = input->current_filter_state[bloom_filter_iterator];
             for (hash_values_iterator = 0; hash_values_iterator < NUM_HASHES; hash_values_iterator += 1)
             {
                 if (bloom_filter_iterator == hash_values[hash_values_iterator])

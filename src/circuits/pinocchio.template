@@ -1,0 +1,28 @@
+use std::marker::PhantomData;
+
+use bellpepper_core::{num::AllocatedNum, ConstraintSystem, SynthesisError};
+use ff::Field;
+use nova_snark::traits::{circuit::StepCircuit, Group};
+use num_bigint::BigUint;
+
+use super::wrapper::StepCircuitWrapper;
+
+#[derive(Clone, Debug)]
+pub struct {{ rs_circuit_struct_name }}<G: Group> {
+    alloc_nums: Vec<AllocatedNum<G::Scalar>>,
+    _phantom: PhantomData<G>,
+}
+
+impl<G: Group> StepCircuit<G::Scalar> for {{ rs_circuit_struct_name }}<G> {
+    fn arity(&self) -> usize {
+        {{ rs_arity }}
+    }
+
+    fn synthesize<CS: ConstraintSystem<G::Scalar>>(
+        &self,
+        cs: &mut CS,
+        z: &[AllocatedNum<G::Scalar>],
+    ) -> Result<Vec<AllocatedNum<G::Scalar>>, SynthesisError> {
+        {{ rs_synthesize }}
+    }
+}

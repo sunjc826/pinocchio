@@ -1,13 +1,15 @@
 {
   "python.analysis.extraPaths": [
     "./common",
+    "./dep",
     "./ccompiler/external-code/pycparser-2.08",
     "./ccompiler/external-code/dep"
   ],
   "files.associations": {
     "make.matrix": "makefile",
     "make.in": "makefile",
-    "*.c.p": "c"
+    "*.c.p": "c",
+    "*.template": "rust"
   },
   "[python]": {
     "editor.detectIndentation": false,
