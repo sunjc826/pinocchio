@@ -243,18 +243,20 @@ output 13                                #
 		num_output_wires = 0
 		while num_output_wires < len(self.bus_list) and self.bus_list[len(self.bus_list) - num_output_wires - 1].is_output():
 			num_output_wires += 1
-				
+
 		rs_arity = num_input_wires
+		rs_first_output_idx = self.total_wire_count - num_output_wires
+		rs_synthesis_lst = []
+		for bus in self.bus_list:
+			bus.rs_synthesize(rs_synthesis_lst)
+		rs_synthesize = "\n".join(rs_synthesis_lst)
 
-		rs_synthesize = ""
-
-		
-		
 		environment = jinja.Environment(loader=jinja.FileSystemLoader(nova_circuit_rs_dir))
 		template = environment.get_template("pinocchio.template")
 		content = template.render(
 			rs_circuit_struct_name = rs_circuit_struct_name,
 			rs_arity = rs_arity,
+			rs_first_output_idx = rs_first_output_idx,
 			rs_synthesize = rs_synthesize
 		)
 

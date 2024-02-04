@@ -1,5 +1,6 @@
 from Wires import *
 from FieldOps import *
+from RsHelpers import RS_SCALAR_ZERO, RS_SCALAR_ONE, RS_VAR_ONE, rs_constant_cache
 
 class FieldZeroP(FieldOp):
 	"""
@@ -31,6 +32,57 @@ class FieldZeroP(FieldOp):
 	def input_wires(self): return WireList([self.in_wire])
 	def output_wires(self): return WireList([self.out_wire])
 
+	def rs_synthesize(self, lst):
+		'''
+		Reference: Nova/src/gadgets/utils.rs 
+
+		Function: nova_snark::gadgets::utils::alloc_num_equals
+
+		- alloc_num_equals's `a` maps to `X`
+		- alloc_num_equals's `b` maps to `0`
+		- alloc_num_equals's `r_value` maps to `Y inverted`
+		- alloc_num_equals's `t` maps to `M`, which is actually `X inverted` when `X != 0`
+		'''
+		x = self.in_wire
+		y = self.out_wire
+		m = self.m_wire
+		lst.extend([
+"""
+let r_value = %s == %s;
+""" % (x.rs_value(), RS_SCALAR_ZERO),
+"""
+let r = AllocatedBit::alloc(cs.namespace(|| "r"), Some(r_value))?;
+""",
+"""
+let t = AllocatedNum::alloc(cs.namespace(|| "t"), || {
+    Ok(if %s == %s {
+      %s
+    } else {
+      %s
+        .invert()
+        .unwrap()
+    })
+  })?;
+""" % (x.rs_value(), RS_SCALAR_ZERO, RS_SCALAR_ONE, x.rs_value()),
+"""
+cs.enforce(
+    || "t*(a - b) = 1 - r",
+    |lc| lc + t.get_variable(),
+    |lc| lc + %s,
+    |lc| lc + %s - r.get_variable(),
+  );
+""" % (x.rs_variable(), RS_VAR_ONE),
+"""
+cs.enforce(
+    || "r*(a - b) = 0",
+    |lc| lc + r.get_variable(),
+    |lc| lc + %s,
+    |lc| lc,
+  );
+"""% (x.rs_variable())
+		])
+
+
 class FieldConstMul(FieldOp):
 	'''Multiply 1 in-wire with a constant `value`'''
 	def __init__(self, comment, value, in_wire, out_wire): # type: (str, int, Wire, Wire) -> None
@@ -58,6 +110,15 @@ class FieldConstMul(FieldOp):
 	def input_wires(self): return WireList([self.in_wire])
 	def output_wires(self): return WireList([self.out_wire])
 
+	def rs_synthesize(self, lst):
+		rs_constant = rs_constant_cache.get_constant(self.value, lst)
+		lst.append(
+"""
+nums.push(&%s.mul(cs.namespace(|| ""), &%s)?);
+""" % (self.in_wire.rs_allocated_num(), rs_constant)
+		)
+
+	
 class FieldBinaryOp(FieldOp):
 	def __init__(self, comment, verb, in_list, out_list): # type: (str, str, WireList, WireList) -> None
 		FieldOp.__init__(self, comment)
@@ -80,6 +141,14 @@ class FieldAdd(FieldBinaryOp):
 		assert(len(in_list)>1)
 		assert(len(out_list)==1)
 
+	def rs_synthesize(self, lst):
+		'''Nova'''
+		assert(len(self.in_list) == 2)
+		lst.append(
+"""
+nums.push(&%s.add(cs.namespace(|| ""), %s)?);
+""" % (self.in_list[0].rs_allocated_num(), self.in_list[1].rs_allocated_num_borrow())
+		)
 class FieldMul(FieldBinaryOp):
 	def __init__(self, comment, in_list, out_list): # type: (str, WireList, WireList) -> None
 		FieldBinaryOp.__init__(self, comment, "mul", in_list, out_list)
@@ -89,6 +158,15 @@ class FieldMul(FieldBinaryOp):
 	def report(self, r):
 		r.add("mul", 1)
 		r.add("raw_mul", 1)
+
+	def rs_synthesize(self, lst):
+		'''Nova'''
+		assert(len(self.in_list) == 2)
+		lst.append(
+"""
+nums.push(&%s.mul(cs.namespace(|| ""), %s)?);
+""" % (self.in_list[0].rs_allocated_num(), self.in_list[1].rs_allocated_num_borrow())
+		)
 
 class FieldSplit(FieldBinaryOp):
 	'''Splitting one in-wire into multiple out-wires'''

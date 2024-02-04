@@ -23,7 +23,10 @@ class FieldOp:
 
 	def assert_int(self, value):
 		assert(type(value)==types.IntType or type(value)==types.LongType)
-		
+
+	def rs_synthesize(self, lst): # type: (list[str]) -> None
+		raise Exception("abstract %s", self.__class__.__name__)
+
 class FieldInputBase(FieldOp):
 	def __init__(self, command, comment, out_wire): # type: (str, str, Wire) -> None
 		FieldOp.__init__(self, comment)
@@ -37,6 +40,9 @@ class FieldInputBase(FieldOp):
 
 	def input_wires(self): return WireList([])
 	def output_wires(self): return WireList([self.out_wire])
+
+	def rs_synthesize(self, lst): # type: (list[str]) -> None
+		pass
 
 class FieldInput(FieldInputBase):
 	def __init__(self, comment, out_wire): # type: (str, Wire) -> None
@@ -60,3 +66,7 @@ class FieldOutput(FieldOp):
 	def output_wires(self): return WireList([])
 		# This line marks an output, it doesn't specify an output.
 		# Otherwise, we'd detect a duplicate output.
+	
+	def rs_synthesize(self, lst): # type: (list[str]) -> None
+		pass
+

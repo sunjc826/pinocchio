@@ -75,9 +75,13 @@ class Bus:
 		raise Exception("abstract in %s" % self)
 	def get_field_ops(self): # type: () -> list[FieldOp]
 		raise Exception("abstract in %s" % self)
-	def get_rs_synthesis(self): # type: () -> str
+	def rs_synthesize(self, lst): # type: (list[str]) -> None
 		'''synthesize Rust code'''
-		raise Exception("abstract in %s" % self)
+		lst.extend([
+			"// Pinocchio: %s" % self.__class__.__name__
+		])
+		for op in self.get_field_ops():
+			op.rs_synthesize(lst)
 
 	def get_trace_count(self):
 		'''trace count is an approximate (upper bound) number of bits needed in a boolean type trace'''

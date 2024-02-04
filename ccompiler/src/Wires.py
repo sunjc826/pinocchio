@@ -21,6 +21,18 @@ class Wire:
 	def __cmp__(self, other):
 		return cmp(self.idx, other.idx)
 
+	def rs_allocated_num(self):
+		return "nums[%s]" % self.idx
+
+	def rs_allocated_num_borrow(self):
+		return "&nums[%s]" % self.idx
+
+	def rs_value(self):
+		return "nums[%s].get_value().unwrap()" % self.idx
+
+	def rs_variable(self):
+		return "nums[%s].get_variable()" % self.idx
+
 class WireList:
 	def __init__(self, wires): # type: (list[Wire]) -> None
 		assert(type(wires)==types.ListType)
