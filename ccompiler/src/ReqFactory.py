@@ -239,12 +239,23 @@ output 13                                #
 		num_input_wires = 0
 		while num_input_wires < len(self.bus_list) and self.bus_list[num_input_wires].is_runtime_input():
 			num_input_wires += 1
-		
+
 		num_output_wires = 0
 		while num_output_wires < len(self.bus_list) and self.bus_list[len(self.bus_list) - num_output_wires - 1].is_output():
 			num_output_wires += 1
 
-		rs_arity = num_input_wires
+		num_public_input_wires = num_output_wires
+		num_auxiliary_input_wires = num_input_wires - num_public_input_wires
+		if num_auxiliary_input_wires < 0:
+			raise Exception("""
+					sizeof(Input) = %s should not be smaller than sizeof(Output) = %s.
+				   
+				   	struct Input consists of PublicIO and AuxiliaryInput. struct Output consists of PublicIO.
+				   	Thus, sizeof(Input) is at least as large as sizeof(Output).
+			""" % (num_input_wires, num_output_wires))
+
+		rs_arity = num_public_input_wires
+		rs_num_auxiliary_variables = num_auxiliary_input_wires
 		rs_first_output_idx = self.total_wire_count - num_output_wires
 		rs_synthesis_lst = []
 		for bus in self.bus_list:
@@ -252,9 +263,10 @@ output 13                                #
 		rs_synthesize = "\n".join(rs_synthesis_lst)
 
 		environment = jinja.Environment(loader=jinja.FileSystemLoader(nova_circuit_rs_dir))
-		template = environment.get_template("pinocchio.template")
+		template = environment.get_template("pinocchio_circuit.template.rs")
 		content = template.render(
 			rs_circuit_struct_name = rs_circuit_struct_name,
+			rs_num_auxiliary_variables = rs_num_auxiliary_variables,
 			rs_arity = rs_arity,
 			rs_first_output_idx = rs_first_output_idx,
 			rs_synthesize = rs_synthesize

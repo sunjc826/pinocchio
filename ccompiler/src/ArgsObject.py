@@ -1,25 +1,3 @@
-# parser.add_argument('cfile', metavar='<cfile>',
-# 		help='a C file to compile')
-# 	parser.add_argument('--print', dest='print_exprs',
-# 		help="print output expressions on stdout")
-# 	parser.add_argument('--il', dest='il_file',
-# 		help='intermediate circuit output file')
-# 	parser.add_argument('--json', dest='json_file',
-# 		help='json version of intermediate circuit output file')
-# 	parser.add_argument('--arith', dest='arith_file',
-# 		help='arithmetic circuit output file')
-# 	parser.add_argument('--bit-width', dest='bit_width',
-# 		help='bit width -- affects bitwise operator semantics and arithmetic circuit output', default=32)
-# 	parser.add_argument('--bool', dest='bool_file',
-# 		help='boolean circuit output file')
-# 	parser.add_argument('--ignore-overflow', dest='ignore_overflow',
-# 		help='ignore field-P overflows; never truncate', default=False)
-# 	parser.add_argument('--cpparg', dest='cpp_arg', nargs="*",
-# 		help='extra arguments to C preprocessor')
-# 	parser.add_argument('--loop-sanity-limit', dest='loop_sanity_limit',
-# 		help='limit on statically-measured loop unrolling', default=1000000)
-# 	parser.add_argument('--progress', dest='progress',
-# 		help='print progress messages during compilation')
 class ArgsObject:
 	'''
 	For intellisense purposes.

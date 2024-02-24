@@ -32,7 +32,7 @@ class ArithZero(ArithmeticBus):
 	def get_wire_count(self): return 1
 
 	def get_field_ops(self):
-		return [ FieldConstMul(
+		return [ FieldConstMulWithOne(
 			"zero", 0, self.board.one_wire(), self.wire_list[0]) ]
 
 	def do_trace(self, j):
@@ -286,7 +286,7 @@ class ArithMultiplyBus(BinaryArithmeticBus):
 
 class JoinBus(Bus):
 	'''Convert a BOOLEAN_TYPE bus into an ARITHMETIC_TYPE bus'''
-	def __init__(self, board, input_bus):
+	def __init__(self, board, input_bus): # type: (Board, Bus) -> None
 		Bus.__init__(self, board, MAJOR_LOGIC)
 		assert(input_bus.get_trace_type()==BOOLEAN_TYPE)
 		self.input_bus = input_bus
@@ -334,6 +334,20 @@ class JoinBus(Bus):
 			cmds.append(
 				FieldAdd(comment+addcomment, term_in_list, term_output))
 		return cmds
+
+	def rs_synthesize(self, lst): # type: (list[str]) -> None
+		Bus.rs_synthesize(self, lst)
+		if self._active_bits == 1:
+			bit_wire = self.input_bus.get_trace(0)
+			lst.append(
+"""
+match %s {
+	Some(v) => println!(\"Comparison result %s = {v:?}\"),
+	None => (),
+};
+""" % (bit_wire.rs_value(), bit_wire.rs_allocated_num())
+			)
+
 
 	def do_trace(self, j):
 		if (self._active_bits==1):

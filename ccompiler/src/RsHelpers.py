@@ -12,20 +12,27 @@ class RsConstantCache:
 		else:
 			var_name = "constant_%s" % value
 		if value not in self.cache:
-			invert = ""
+			additive_invert = ""
 			if value < 0:
-				invert = ".invert().unwrap()"
+				additive_invert = "-"
 			lst.append(
 """
 let %s = AllocatedNum::alloc(cs.namespace(|| "constant_%s"), || {
-	Ok(%s.pow_vartime([%s])%s)
+	Ok(%sG::Scalar::from(%s))
 })?;
-""" % (var_name, value, RS_SCALAR_ONE, abs(value), invert)
+""" % (var_name, value, additive_invert, abs(value))
 			)
 			self.cache.add(value)
 		return var_name
 
 rs_constant_cache = RsConstantCache()	
 
-def alloc_num(idx):
-	return "num[%s]" % idx
+def push_num(s): # type: (str) -> str
+	return "nums.push(%s);" % s
+
+def push_multiple_nums(s): # type: (str) -> str
+	return \
+"""
+let multiple_nums = %s;
+nums.extend(multiple_nums);
+""" % s

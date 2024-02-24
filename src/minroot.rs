@@ -2,7 +2,7 @@ use crate::circuits::minroot::{MinRootCircuit, MinRootIteration};
 use crate::runner;
 use crate::types::E1;
 use nova_snark::traits::Engine;
-pub fn run() {
+pub(crate) fn run() {
     let num_steps = 10;
     let num_iters_per_step = 1024;
     // number of iterations of MinRoot per Nova's recursive step

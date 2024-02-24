@@ -71,7 +71,11 @@ class Bus:
 		A good example to look at is `ArithmeticZeroPBus`, which makes use of 6 wires in addition to the input wires.
 		'''	
 		raise Exception("abstract in %s" % self)
-	def do_trace(self, j): # type: (int) -> Wire		
+	def do_trace(self, j): # type: (int) -> Wire
+		'''
+		Returns the `j`-th wire of the `Bus`.
+		Precondition: `0 <= j < self.get_trace_count()`
+		'''	
 		raise Exception("abstract in %s" % self)
 	def get_field_ops(self): # type: () -> list[FieldOp]
 		raise Exception("abstract in %s" % self)
@@ -84,13 +88,17 @@ class Bus:
 			op.rs_synthesize(lst)
 
 	def get_trace_count(self):
-		'''trace count is an approximate (upper bound) number of bits needed in a boolean type trace'''
-		# if trace_type==ARITHMETIC_TYPE, trace_count should be 1.
+		'''
+		trace count is an approximate (upper bound) number of bits (and thus wires) needed in a boolean type trace
+		
+		if `self.get_trace_type() == ARITHMETIC_TYPE`, trace count should be 1, since there is only 1 "arithmetic" wire associated with a Bus
+		'''
 		result = self.do_trace_count()
 		assert(self.get_trace_type()==BOOLEAN_TYPE or result==1)
 		return result
 
 	def get_trace(self, j): # type: (int) -> Wire
+		'''Returns the `j`-th wire of the `Bus`'''
 		assert(0<=j)
 		if (j<self.get_trace_count()):
 			result = self.do_trace(j)
@@ -117,7 +125,7 @@ class OneBus(Bus):
 		return self.wire_list[0]
 
 	def get_field_ops(self):
-		return [ FieldInput("one-input", self.wire_list[0]) ]
+		return [ FieldInputOne("one-input", self.wire_list[0]) ]
 
 	def do_trace_count(self):
 		raise Exception("Not really a bus!")

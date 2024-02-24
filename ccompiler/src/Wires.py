@@ -8,7 +8,7 @@ apply one or more FieldOps to groups of wires.
 '''
 
 class Wire:
-	def __init__(self, idx): # type: (int) -> None
+	def __init__(self, idx, is_one_wire = False): # type: (int, bool) -> None
 		assert(type(idx)==types.IntType)
 		self.idx = idx
 
@@ -28,7 +28,7 @@ class Wire:
 		return "&nums[%s]" % self.idx
 
 	def rs_value(self):
-		return "nums[%s].get_value().unwrap()" % self.idx
+		return "nums[%s].get_value()" % self.idx
 
 	def rs_variable(self):
 		return "nums[%s].get_variable()" % self.idx

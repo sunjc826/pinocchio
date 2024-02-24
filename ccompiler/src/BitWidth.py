@@ -43,7 +43,7 @@ class BitWidth:
 		# really honoring the sign bit.
 
 	def truncate(self, bits): # type: (int) -> int
-		'''Computes `min(self.width, bits)` if overflow_limit is enabled, otherwise returns `bits`.'''
+		'''Computes `min(self.width, bits)` if `self.overflow_limit` is enabled, otherwise returns `bits`.'''
 		if (self.overflow_limit != None
 			and bits >= self.get_width()):
 			return self.get_width()

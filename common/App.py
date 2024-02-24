@@ -1,5 +1,6 @@
 import os
 APP_NAME = os.environ["VC_APP_NAME"]
+IGNORE_OVERFLOW = os.environ.get("VC_IGNORE_OVERFLOW") != None
 class App:
 	def __init__(self, name, params=None, bitwidths=None, cached_construction=False, ignore_overflow=False):
 		# type: (str, list[int] | None, list[int] | None, bool, bool) -> None
@@ -29,7 +30,7 @@ class App:
 			#App("sha", params=[0], bitwidths=[32], cached_construction=True),
 			#App("sha", params=[1], bitwidths=[32], cached_construction=True),
 			# App("my-test")
-			App(APP_NAME)
+			App(APP_NAME, ignore_overflow=IGNORE_OVERFLOW)
 			]
 		return apps
 

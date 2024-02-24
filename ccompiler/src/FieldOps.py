@@ -1,5 +1,6 @@
 import types
 from Wires import *
+from RsHelpers import rs_constant_cache, push_num
 
 class FieldOp:
 	def __init__(self, comment):
@@ -48,6 +49,18 @@ class FieldInput(FieldInputBase):
 	def __init__(self, comment, out_wire): # type: (str, Wire) -> None
 		FieldInputBase.__init__(self, "input", comment, out_wire)
 
+class FieldInputOne(FieldInput):
+	def __init__(self, comment, out_wire): # type: (str, Wire) -> None
+		FieldInput.__init__(self, comment, out_wire)
+	def rs_synthesize(self, lst): # type: (list[str]) -> None
+		constant_one = rs_constant_cache.get_constant(1, lst)
+		lst.append(
+			push_num(
+"""
+%s.clone()
+""" % constant_one
+			)
+		)
 class FieldNIZKInput(FieldInputBase):
 	def __init__(self, comment, out_wire): # type: (str, Wire) -> None
 		FieldInputBase.__init__(self, "nizkinput", comment, out_wire)

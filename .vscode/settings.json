@@ -8,8 +8,7 @@
   "files.associations": {
     "make.matrix": "makefile",
     "make.in": "makefile",
-    "*.c.p": "c",
-    "*.template": "rust"
+    "*.c.p": "c"
   },
   "[python]": {
     "editor.detectIndentation": false,

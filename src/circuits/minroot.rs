@@ -3,7 +3,7 @@ use ff::{derive::bitvec::store::BitStore, Field};
 use nova_snark::traits::{circuit::StepCircuit, Group};
 use num_bigint::BigUint;
 
-use super::wrapper::StepCircuitWrapper;
+use super::utility::wrapper::StepCircuitWrapper;
 
 #[derive(Clone, Debug)]
 pub struct MinRootIteration<G: Group> {

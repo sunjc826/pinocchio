@@ -3,7 +3,7 @@
 // so the parts related to CompressedSNARK are removed.
 // This file provides a somewhat unified/simplified way to operate on a StepCircuit impl.
 
-use crate::{circuits::wrapper::StepCircuitWrapper, types::*};
+use crate::{circuits::utility::wrapper::StepCircuitWrapper, types::*};
 use nova_snark::{
     provider::hyperkzg::Bn256EngineKZG,
     traits::{circuit::TrivialCircuit, snark::RelaxedR1CSSNARKTrait, Engine},
@@ -20,12 +20,9 @@ pub fn run<C1: StepCircuitWrapper<<E1 as Engine>::GE>>(
     println!("{}", description);
     println!("=========================================================");
 
-    let num_steps = 10;
-    let num_iters_per_step = 1024;
+    let num_steps = circuits.len();
 
     let circuit_secondary = TrivialCircuit::default();
-
-    println!("Proving {num_iters_per_step} iterations of MinRoot per step");
 
     // produce public parameters
     let start = Instant::now();

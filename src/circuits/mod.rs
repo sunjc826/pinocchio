@@ -1,3 +1,3 @@
-pub mod bloom_filter;
-pub mod minroot;
-pub mod wrapper;
+pub(crate) mod aux_vector_clock;
+pub(crate) mod minroot;
+pub(crate) mod utility;

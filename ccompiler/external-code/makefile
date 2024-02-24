@@ -1,4 +1,4 @@
-all: pycparser-2.08/pycparser/plyparser.py ply-3.4/ply/yacc.py
+all: pycparser-2.08/pycparser/plyparser.py ply-3.4/ply/yacc.py pydot
 
 pycparser-2.08/pycparser/plyparser.py:
 	wget --no-check-certificate https://pypi.python.org/packages/source/p/pycparser/pycparser-2.08.tar.gz
