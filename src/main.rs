@@ -1,11 +1,12 @@
 mod aux_vector_clock;
 mod circuits;
+mod ivc_increment;
 mod minroot;
 mod runner;
 mod types;
 
 fn main() {
-    aux_vector_clock::run();
+    ivc_increment::run();
 }
 
 #[cfg(test)]

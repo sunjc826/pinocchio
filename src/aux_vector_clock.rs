@@ -32,7 +32,7 @@ pub(crate) fn run() {
 
     println!("Initial State: {z0_primary:?}");
 
-    let inputs: Vec<[u64; 6]> = vec![
+    let auxiliary_inputs: Vec<[u64; 6]> = vec![
         [0; 6],                   // increment idx 0 (1, 0, 0, 0)
         [0; 6],                   // increment idx 0 (2, 0, 0, 0)
         [0, 2, 0, 0, 0, 0],       // increment idx 2 (2, 0, 1, 0)
@@ -41,11 +41,11 @@ pub(crate) fn run() {
         [2, 1, 2, 3, 4, 5], // no-op                 (3, 3, 1, 10); Note that increment_idx, other_clock have garbage values
     ];
 
-    let circuits = inputs
+    let circuits = auxiliary_inputs
         .into_iter()
-        .map(|input| AuxVectorClockCircuit {
+        .map(|auxiliary_input| AuxVectorClockCircuit {
             _phantom: PhantomData,
-            auxiliary_variables: input,
+            auxiliary_variables: auxiliary_input,
         })
         .collect::<Vec<_>>();
 
