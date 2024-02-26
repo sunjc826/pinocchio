@@ -1,9 +1,7 @@
 use crate::circuits::aux_vector_clock::AuxVectorClockCircuit;
-use crate::circuits::utility::func::print_nums;
 use crate::runner;
 use crate::types::E1;
 use nova_snark::traits::Engine;
-use std::marker::PhantomData;
 
 /**
 ```c
@@ -19,19 +17,6 @@ use std::marker::PhantomData;
 ```
 */
 pub(crate) fn run() {
-    let circuit_primary = AuxVectorClockCircuit {
-        _phantom: PhantomData,
-        auxiliary_variables: [0; 6],
-    };
-    let z0_primary = vec![
-        <E1 as Engine>::Scalar::zero(),
-        <E1 as Engine>::Scalar::zero(),
-        <E1 as Engine>::Scalar::zero(),
-        <E1 as Engine>::Scalar::zero(),
-    ];
-
-    println!("Initial State: {z0_primary:?}");
-
     let auxiliary_inputs: Vec<[u64; 6]> = vec![
         [0; 6],                   // increment idx 0 (1, 0, 0, 0)
         [0; 6],                   // increment idx 0 (2, 0, 0, 0)
@@ -40,19 +25,10 @@ pub(crate) fn run() {
         [0, 3, 100, 42, 100, 42], // increment idx 3 (3, 3, 1, 10); Note that other_clock has garbage values
         [2, 1, 2, 3, 4, 5], // no-op                 (3, 3, 1, 10); Note that increment_idx, other_clock have garbage values
     ];
-
-    let circuits = auxiliary_inputs
-        .into_iter()
-        .map(|auxiliary_input| AuxVectorClockCircuit {
-            _phantom: PhantomData,
-            auxiliary_variables: auxiliary_input,
-        })
-        .collect::<Vec<_>>();
-
     runner::run(
         "AuxVectorClockCircuit",
-        circuit_primary,
-        circuits,
-        &z0_primary,
+        AuxVectorClockCircuit::make_circuit_primary(),
+        AuxVectorClockCircuit::make_circuits(auxiliary_inputs),
+        &AuxVectorClockCircuit::<<E1 as Engine>::GE>::make_z0_primary_all_zero(),
     );
 }

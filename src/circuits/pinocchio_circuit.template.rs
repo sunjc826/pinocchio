@@ -15,6 +15,36 @@ pub struct {{ rs_circuit_struct_name }}<G: Group> {
 impl<G: Group> {{ rs_circuit_struct_name }}<G> {
     const ZERO: G::Scalar = G::Scalar::ZERO;
     const ONE: G::Scalar = G::Scalar::ONE;
+
+    pub fn make_circuit_primary() -> {{ rs_circuit_struct_name }}<G> {
+        {{ rs_circuit_struct_name }} {
+            _phantom: PhantomData,
+            auxiliary_variables: [0; {{ rs_num_auxiliary_variables }}],
+        }
+    }
+
+    pub fn make_z0_primary_all_zero() -> Vec<G::Scalar> {
+        vec![G::Scalar::from(0 as u64); {{ rs_arity }}]
+    }
+
+    // The following function only accepts u64 as each input element (for simplicity).
+    // Usually, the fields are large so z0_primary can actually consist of much larger numbers. 
+    pub fn make_z0_primary(initial_public_inputs: [u64; {{ rs_arity }}]) -> Vec<G::Scalar> {
+        initial_public_inputs
+            .into_iter()
+            .map(|v| G::Scalar::from(v))
+            .collect::<Vec<_>>()
+    }
+
+    pub fn make_circuits(auxiliary_inputs: Vec<[u64; {{ rs_num_auxiliary_variables }}]>) -> Vec<{{ rs_circuit_struct_name }}<G>> {
+        auxiliary_inputs
+        .into_iter()
+        .map(|auxiliary_input| {{ rs_circuit_struct_name }} {
+            _phantom: PhantomData,
+            auxiliary_variables: auxiliary_input,
+        })
+        .collect::<Vec<_>>()
+    }
 }
 
 impl<G: Group> StepCircuit<G::Scalar> for {{ rs_circuit_struct_name }}<G> {
