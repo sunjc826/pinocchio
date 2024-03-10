@@ -85,7 +85,7 @@ class Bus:
 			"// Pinocchio: %s" % self.__class__.__name__
 		])
 		for op in self.get_field_ops():
-			op.rs_synthesize(lst)
+			op.rs_synthesize(lst, self.board.rs_constant_cache)
 
 	def get_trace_count(self):
 		'''

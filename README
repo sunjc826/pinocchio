@@ -7,6 +7,7 @@ Developer notes: Not all C++ compiler versions work when you `cargo run`!
 
 I have verified that g++-10 works when compiling the Rust project. Note that g++-11 does not work when compiling pasta-msm, which is one of Nova's dependencies. The clang versions I tried also didn't work. I used `update-alternatives` on Ubuntu to set the c++ softlink to point to g++-10.
 
+We also compare with circuits written in the circom language.
 
 Pinocchio v0.5.3
 ----------------

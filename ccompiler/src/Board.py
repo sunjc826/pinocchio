@@ -1,6 +1,6 @@
 from BitWidth import *
 from Buses import *
-
+from RsHelpers import RsConstantCache
 class Board:
 	'''
 	board layer: abstracts into values that travel on busses made of traces.
@@ -13,6 +13,7 @@ class Board:
 		self.max_width = max_width	# eg 254 (largest 2^k <= P)
 		assert(isinstance(bit_width, BitWidth))
 		self.bit_width = bit_width	# defines C int overflow, sign-bit behavior
+		self.rs_constant_cache = RsConstantCache(bit_width)
 		self.order_alloc = 0
 
 		self._one_bus = OneBus(self)

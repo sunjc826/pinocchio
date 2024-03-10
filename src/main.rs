@@ -6,7 +6,8 @@ mod runner;
 mod types;
 
 fn main() {
-    ivc_increment::run();
+    aux_vector_clock::run();
+    aux_vector_clock::run_circom();
 }
 
 #[cfg(test)]
@@ -18,7 +19,7 @@ mod tests {
     type FieldElement = <GroupElement as Group>::Scalar;
 
     #[test]
-    fn group_test() {
+    fn field_test() {
         let fe = FieldElement::ONE;
         let bits = fe.to_le_bits();
         println!("{fe:?} {bits}");

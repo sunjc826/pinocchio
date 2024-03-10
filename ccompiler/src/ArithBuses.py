@@ -173,6 +173,7 @@ class ConstantMultiplyBus(ArithmeticBus):
 		Bus.__init__(self, board, MAJOR_LOGIC)
 		self.assert_int(value)
 		assert(bus.get_trace_type()==ARITHMETIC_TYPE)
+		# Note: This has a (desired) effect of converting value from signed to unsigned!
 		self.value = value & self.board.bit_width.get_neg1()
 		self.bus = bus
 		self._active_bits = ceillg2(self.value)+self.bus.get_active_bits()

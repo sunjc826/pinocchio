@@ -7,6 +7,9 @@ ccompiler/input/build
 make.matrix
 get-pip.py
 dep/
+src/circom_circuits/*
+!*.circom
+
 # Added by cargo
 
 /target

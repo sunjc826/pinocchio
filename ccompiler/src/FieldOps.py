@@ -1,6 +1,6 @@
 import types
 from Wires import *
-from RsHelpers import rs_constant_cache, push_num
+from RsHelpers import RsConstantCache, push_num
 
 class FieldOp:
 	def __init__(self, comment):
@@ -25,7 +25,7 @@ class FieldOp:
 	def assert_int(self, value):
 		assert(type(value)==types.IntType or type(value)==types.LongType)
 
-	def rs_synthesize(self, lst): # type: (list[str]) -> None
+	def rs_synthesize(self, lst, rs_constant_cache): # type: (list[str], RsConstantCache) -> None
 		raise Exception("abstract %s", self.__class__.__name__)
 
 class FieldInputBase(FieldOp):
@@ -42,7 +42,7 @@ class FieldInputBase(FieldOp):
 	def input_wires(self): return WireList([])
 	def output_wires(self): return WireList([self.out_wire])
 
-	def rs_synthesize(self, lst): # type: (list[str]) -> None
+	def rs_synthesize(self, lst, rs_constant_cache): # type: (list[str], RsConstantCache) -> None
 		pass
 
 class FieldInput(FieldInputBase):
@@ -52,7 +52,7 @@ class FieldInput(FieldInputBase):
 class FieldInputOne(FieldInput):
 	def __init__(self, comment, out_wire): # type: (str, Wire) -> None
 		FieldInput.__init__(self, comment, out_wire)
-	def rs_synthesize(self, lst): # type: (list[str]) -> None
+	def rs_synthesize(self, lst, rs_constant_cache): # type: (list[str], RsConstantCache) -> None
 		constant_one = rs_constant_cache.get_constant(1, lst)
 		lst.append(
 			push_num(
@@ -80,6 +80,6 @@ class FieldOutput(FieldOp):
 		# This line marks an output, it doesn't specify an output.
 		# Otherwise, we'd detect a duplicate output.
 	
-	def rs_synthesize(self, lst): # type: (list[str]) -> None
+	def rs_synthesize(self, lst, rs_constant_cache): # type: (list[str], RsConstantCache) -> None
 		pass
 

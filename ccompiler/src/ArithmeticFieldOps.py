@@ -32,7 +32,7 @@ class FieldZeroP(FieldOp):
 	def input_wires(self): return WireList([self.in_wire])
 	def output_wires(self): return WireList([self.out_wire])
 
-	def rs_synthesize(self, lst):
+	def rs_synthesize(self, lst, rs_constant_cache): # type: (list[str], RsConstantCache) -> None
 		'''
 		Reference: Nova/src/gadgets/utils.rs 
 
@@ -80,7 +80,7 @@ class FieldConstMul(FieldOp):
 	def input_wires(self): return WireList([self.in_wire])
 	def output_wires(self): return WireList([self.out_wire])
 
-	def rs_synthesize(self, lst):
+	def rs_synthesize(self, lst, rs_constant_cache): # type: (list[str], RsConstantCache) -> None
 		rs_constant = rs_constant_cache.get_constant(self.value, lst)
 		lst.append(
 			push_num(
@@ -94,7 +94,7 @@ class FieldConstMulWithOne(FieldConstMul):
 	def __init__(self, comment, value, in_wire, out_wire): # type: (str, int, Wire, Wire) -> None
 		FieldConstMul.__init__(self, comment, value, in_wire, out_wire)
 
-	def rs_synthesize(self, lst):
+	def rs_synthesize(self, lst, rs_constant_cache): # type: (list[str], RsConstantCache) -> None
 		rs_constant = rs_constant_cache.get_constant(self.value, lst)
 		lst.append(
 			push_num(
@@ -127,7 +127,7 @@ class FieldAdd(FieldBinaryOp):
 		assert(len(in_list)>1)
 		assert(len(out_list)==1)
 
-	def rs_synthesize(self, lst):
+	def rs_synthesize(self, lst, rs_constant_cache): # type: (list[str], RsConstantCache) -> None
 		'''Nova'''
 		assert(len(self.in_list) == 2)
 		lst.append(
@@ -147,7 +147,7 @@ class FieldMul(FieldBinaryOp):
 		r.add("mul", 1)
 		r.add("raw_mul", 1)
 
-	def rs_synthesize(self, lst): # type: (list[str]) -> None
+	def rs_synthesize(self, lst, rs_constant_cache): # type: (list[str], RsConstantCache) -> None
 		'''Nova'''
 		assert(len(self.in_list) == 2)
 		lst.append(
@@ -171,7 +171,7 @@ class FieldSplit(FieldBinaryOp):
 	def input_wires(self): return self.in_list
 	def output_wires(self): return self.out_list
 
-	def rs_synthesize(self, lst): # type: (list[str]) -> None
+	def rs_synthesize(self, lst, rs_constant_cache): # type: (list[str], RsConstantCache) -> None
 		'''Nova'''
 		lst.append(
 			push_multiple_nums(
