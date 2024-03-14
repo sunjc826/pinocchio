@@ -8,14 +8,14 @@ RS_SCALAR_ZERO = "Self::ZERO"
 RS_SCALAR_ONE = "Self::ONE"
 RS_VAR_ONE = "CS::one()"
 INVERT_TYPE_TWOS_COMPLEMENT = 0
-INVERT_TYPE_SCALAR_FIELD = 1 # This is probably NOT what we want
+INVERT_TYPE_SCALAR_FIELD = 1 
 class RsConstantCache:
 	
 	def __init__(self, bitwidth): # type: (BitWidth) -> None
 		self.cache = set() # type: set[int]
 		self.bitwidth = bitwidth
 	
-	def get_constant(self, value, lst, invert_type = INVERT_TYPE_TWOS_COMPLEMENT): # type: (int, list[str], int) -> str
+	def get_constant(self, value, lst, invert_type = INVERT_TYPE_SCALAR_FIELD): # type: (int, list[str], int) -> str
 		'''
 		Get a constant field element representing `value`.
 		If `invert_type` is `INVERT_TYPE_TWOS_COMPLEMENT`, then a negative `value` will be converted to
@@ -23,22 +23,11 @@ class RsConstantCache:
 		If `invert_type` is `INVERT_TYPE_SCALAR_FIELD`, then a negative `value` is treated an additive inverse
 		in the field.
 
-		Since we are working with C code, we pretty much want `INVERT_TYPE_TWOS_COMPLEMENT`.
-		In fact, in the original Pinocchio code, negative signed values are already converted into their unsigned variants.
-		So the code path where `value < 0` is probably not visited at all...
-
-		For example, see `ConstantMultiplyBus`.
-		```
-		class ConstantMultiplyBus(ArithmeticBus):
-			def __init__(self, board, value, bus): # type: (Board, int, ArithmeticBus) -> None
-				Bus.__init__(self, board, MAJOR_LOGIC)
-				self.assert_int(value)
-				assert(bus.get_trace_type()==ARITHMETIC_TYPE)
-				# Note: This has a (desired) effect of converting value from signed to unsigned!
-				self.value = value & self.board.bit_width.get_neg1()
-				self.bus = bus
-				self._active_bits = ceillg2(self.value)+self.bus.get_active_bits()
-		```
+		Examples: 
+		- `ConstantMultiplyBus` already does INVERT_TYPE_TWOS_COMPLEMENT in its constructor
+		- `ArithmeticConditionalBus`: When inverting a boolean value, such as when computing if-else, `INVERT_TYPE_SCALAR_FIELD` and
+		  `INVERT_TYPE_TWOS_COMPLEMENT` are equivalent up to the first 32 bits (assuming 32-bit 2's complement), however
+		  we prefer `INVERT_TYPE_SCALAR_FIELD` so that we don't overflow as easily.
 		'''
 		if value < 0:
 			if invert_type == INVERT_TYPE_TWOS_COMPLEMENT:

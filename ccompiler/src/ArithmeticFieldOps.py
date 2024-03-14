@@ -1,6 +1,6 @@
 from Wires import *
 from FieldOps import *
-from RsHelpers import RS_SCALAR_ZERO, RS_SCALAR_ONE, RS_VAR_ONE, rs_constant_cache, push_num, push_multiple_nums
+from RsHelpers import RS_SCALAR_ZERO, RS_SCALAR_ONE, RS_VAR_ONE, push_num, push_multiple_nums
 
 class FieldZeroP(FieldOp):
 	"""
